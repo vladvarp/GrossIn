@@ -169,6 +169,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <label>Пароль логово</label>
       <div class="input-with-btn">
         <input id="rpass" type="password" placeholder="общий секрет для входа"/>
+        <button id="pastePass" class="gen-btn" title="Вставить из буфера">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+          </svg>
+        </button>
         <button id="genPass" class="gen-btn" title="Сгенерировать пароль">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
             <rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="16" cy="8" r="1.5" fill="currentColor"/><circle cx="8" cy="16" r="1.5" fill="currentColor"/><circle cx="16" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>
@@ -731,6 +736,13 @@ if(last&&last.n&&last.r){
   $('rpass').value=last.r;
   doLogin();
 }
+
+$('pastePass').addEventListener('click',async()=>{
+  try{
+    const txt=await navigator.clipboard.readText();
+    if(txt){$('rpass').value=txt;renderChips()}
+  }catch(e){}
+});
 
 $('genPass').addEventListener('click',()=>{
   const dice='⚀⚁⚂⚃⚄⚅';
