@@ -35,6 +35,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #loginBtn:hover{opacity:.86}
 #loginBtn:active{transform:scale(.99)}
 #loginBtn:disabled{opacity:.45;cursor:default}
+#savedList{margin-bottom:1rem}
+.saved-item{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:9px 12px;margin-bottom:6px;cursor:pointer;transition:border-color .2s}
+.saved-item:hover{border-color:var(--accent2)}
+.saved-item input{display:none}
+.saved-item.loaded{background:var(--adim);border-color:var(--accent)}
+.saved-info{flex:1;min-width:0}
+.saved-nick{font-size:14px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.saved-pass{font-size:11px;color:var(--text3);margin-top:2px}
+.saved-del{width:24px;height:24px;background:transparent;border:none;border-radius:var(--rxs);color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;flex-shrink:0}
+.saved-del:hover{background:var(--red);color:#fff}
+.saved-del svg{width:14px;height:14px}
 
 /* CHAT */
 #chat{display:none;width:100%;height:100vh;flex-direction:column;max-width:780px;margin:0 auto}
@@ -117,6 +128,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="hint">
       <b>Как работает:</b> пароль хешируется в уникальный ID канала — войти могут только те, кто знает тот же пароль. Регистрации нет, всё анонимно. История хранится 24 часа.
     </div>
+    <div id="savedList"></div>
     <div id="err"></div>
     <button id="loginBtn">Войти в комнату</button>
   </div>
@@ -168,6 +180,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const NTFY='https://ntfy.sh';
 let S={topic:'',nick:'',since:0,timer:null,known:new Set()};
 const $=id=>document.getElementById(id);
+const STORAGE_KEY='privchat_saved';
+const getSaved=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch{return[]}};
+const saveCred=(nick,pass)=>{const a=getSaved();const i=a.findIndex(x=>x.n===nick);if(i>=0)a[i].p=pass;else a.unshift({n:nick,p:pass});localStorage.setItem(STORAGE_KEY,JSON.stringify(a.slice(0,20)));renderSaved()};
+const delCred=(nick)=>{const a=getSaved().filter(x=>x.n!==nick);localStorage.setItem(STORAGE_KEY,JSON.stringify(a));renderSaved()};
+const renderSaved=()=>{const c=$('savedList'),v=$('uname').value.trim(),p=$('rpass').value,sel=getSaved().find(x=>x.n===v&&x.p===p);c.innerHTML=getSaved().map(x=>`<div class="saved-item${sel&&x.n===sel.n?' loaded':''}" data-n="${x.n}" data-p="${x.p}"><div class="saved-info"><div class="saved-nick">${x.n}</div><div class="saved-pass">••••••</div></div><button class="saved-del" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`).join('');c.querySelectorAll('.saved-item').forEach(el=>{el.addEventListener('click',e=>{if(e.target.closest('.saved-del'))return;$('uname').value=el.dataset.n;$('rpass').value=el.dataset.p;renderSaved()});el.querySelector('.saved-del').addEventListener('click',e=>{e.stopPropagation();delCred(el.dataset.n)})})}
 const COLORS=['#7c6af7','#4caf82','#f06b6b','#f0a050','#50c8f0','#c070e8','#7ad4a0','#f07090','#e8c84a'];
 
 function strColor(s){let h=5381;for(let c of s)h=((h<<5)+h)^c.charCodeAt(0);return COLORS[Math.abs(h)%COLORS.length]}
@@ -200,6 +217,7 @@ async function doLogin(){
   S.nick=nick;
   S.since=0;
   S.known=new Set();
+  saveCred(nick,pass);
 
   const label=hash.slice(0,6).toUpperCase();
   $('rname').textContent='Комната #'+label;
@@ -393,6 +411,8 @@ $('sendBtn').addEventListener('click',sendMsg);
 $('loginBtn').addEventListener('click',doLogin);
 $('rpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()});
+$('uname').addEventListener('input',renderSaved);
+$('rpass').addEventListener('input',renderSaved);
 </script>
 </body>
 </html>
