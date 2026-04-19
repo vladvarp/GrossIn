@@ -261,6 +261,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="ftr" style="position:relative">
     <div id="emojiPicker">
       <div class="tabs">
+        <button class="tab" data-cat="rec" style="display:none">🕐</button>
+        <button class="tab" data-cat="rat">🐀</button>
         <button class="tab active" data-cat="sml">😀</button>
         <button class="tab" data-cat="anim">🐱</button>
         <button class="tab" data-cat="food">🍕</button>
@@ -845,6 +847,8 @@ $('genPass').addEventListener('click',()=>{
 
 /* emoji picker */
 const EMOJI_CATS={
+  rec:[],
+  rat:['🐀','🐁','🐭','🐹','🧀','🥜','🌰','🪵','🥕','🦴','🐾','🪤','🔦','🔑','👀','🦷','❤️','🩸','💊','💉','⚡','🌙','⭐','🔥','🚬','🍺','🍻','🥛','☕','🍷','🍪','🍩','🎰','🎱','🃏','🏮','🌿','🌳','🛸','🚀','🕯️','📔','📚','💼','💰','🏧'],
   sml:['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
   anim:['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪰','🪲','🪳','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘'],
   food:['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🌽','🥕','🫑','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪'],
@@ -852,6 +856,18 @@ const EMOJI_CATS={
   obj:['💼','📚','📖','📝','✏️','🖊️','🖋️','✒️','📌','📎','🖇️','📍','🗑️','✂️','🗃️','📁','📂','🗂️','📅','🗒️','🗓️','📆','📇','📈','📉','🗃️','📊','📋','📄','📃','📑','📏','📐','🗎','🗒️','✒️','🖋️','🖊️','✏️','📛','🔖','🏷️','💰','💳','💵','🪙','💸','💳','🏧','📞','☎️','📟','📠','📺','📻','🎙️','🎚️','🎛️','🧭','⏱️','⏲️','⏰','🕰️','💡','🔦','🕯️','🪔','🧯'],
   sym:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️']
 };
+
+function getRecentEmojis(){
+  try{return JSON.parse(localStorage.getItem('pc_recent_emoji')||'[]')}catch{return[]}
+}
+function saveRecentEmoji(e){
+  let arr=getRecentEmojis();
+  arr=[e,...arr.filter(x=>x!==e)].slice(0,32);
+  try{localStorage.setItem('pc_recent_emoji',JSON.stringify(arr))}catch{}
+  EMOJI_CATS.rec=arr;
+  const tab=$('emojiPicker').querySelector('.tab[data-cat="rec"]');
+  if(tab)tab.style.display=e&&getRecentEmojis().length?'flex':'none';
+}
 
 function renderEmojiGrid(cat){
   const grid=$('emGrid');
@@ -874,13 +890,15 @@ function insertEmoji(e){
   inp.focus();
   autoResize();
   $('sendBtn').disabled=inp.value.trim()==='';
+  saveRecentEmoji(e);
 }
 
 $('emojiBtn').addEventListener('click',(e)=>{
   e.stopPropagation();
   $('emojiPicker').classList.toggle('show');
   if($('emojiPicker').classList.contains('show')){
-    renderEmojiGrid('sml');
+    EMOJI_CATS.rec=getRecentEmojis();
+    renderEmojiGrid($('emojiPicker').querySelector('.tab.active')?.dataset.cat||'sml');
   }
 });
 
@@ -897,6 +915,10 @@ document.addEventListener('click',(e)=>{
     $('emojiPicker').classList.remove('show');
   }
 });
+
+EMOJI_CATS.rec=getRecentEmojis();
+const recTab=$('emojiPicker')?.querySelector('.tab[data-cat="rec"]');
+if(recTab)recTab.style.display=EMOJI_CATS.rec.length?'flex':'none';
 </script>
 </body>
 </html>
