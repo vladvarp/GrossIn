@@ -353,6 +353,7 @@ function dialog(title,msg,btns,callback){
   $('dialog').classList.remove('off');
 }
 function closeDialog(){$('dialog').classList.add('off')}
+function alert(title,msg,btn,cb){dialog(title,msg,[{label:btn||'ОК',ok:true}],cb||(()=>{}))}
 function confirm(title,msg,ok,onOk){dialog(title,msg,[{label:'Отмена',ok:false},{label:ok||'ОК',ok:true}],onOk)}
 const COLORS=['#7c6af7','#4caf82','#f06b6b','#f0a050','#50c8f0','#c070e8','#7ad4a0','#f07090','#e8c84a'];
 function strColor(s){let h=5381;for(const c of s)h=((h<<5)+h)^c.charCodeAt(0);return COLORS[Math.abs(h)%COLORS.length]}
@@ -775,7 +776,7 @@ $('pastePass').addEventListener('click',async()=>{
     try{
       const txt=await navigator.clipboard.readText();
       if(txt){$('rpass').value=txt;renderChips()}
-    }catch(e){$('rpass').focus()}
+    }catch(e){alert('Ошибка','Нет доступа к буферу обмена. Вставьте пароль вручную.','ОК',()=>{$('rpass').focus()})}
   };
   try{
     const perm=await navigator.permissions.query({name:'clipboard-read'});
@@ -787,8 +788,7 @@ $('pastePass').addEventListener('click',async()=>{
       });
       return;
     }
-  }catch(e){}
-  $('rpass').focus();
+  }catch(e){alert('Ошибка','Браузер не поддерживает автоматическую вставку. Вставьте пароль вручную.','ОК',()=>{$('rpass').focus()})}
 });
 
 $('genPass').addEventListener('click',()=>{
