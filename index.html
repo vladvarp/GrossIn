@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PrivChat</title>
+<title>ChrisoChat</title>
 <style>
 :root{
   --bg:#0f0f13;--bg2:#17171e;--bg3:#1e1e28;--bg4:#252533;
@@ -135,7 +135,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div id="overlay" class="off">
   <div class="spin"></div>
-  <div class="otext" id="otext">Подключение…</div>
+  <div class="otext" id="otext">Крысиное подключение…</div>
   <div class="oretry" id="oretry"></div>
 </div>
 
@@ -147,8 +147,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     </div>
-    <h1>PrivChat</h1>
-    <p>Приватный мессенджер · без регистрации</p>
+    <h1>ChrisoChat</h1>
+    <p>Крысиный мессенджер · без СМС и регистраций</p>
   </div>
 
   <div class="card">
@@ -168,7 +168,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <!-- Room password -->
     <div class="field">
-      <label>Пароль комнаты</label>
+      <label>Пароль логово</label>
       <div class="input-with-btn">
         <input id="rpass" type="password" placeholder="общий секрет для входа"/>
         <button id="genPass" class="gen-btn" title="Сгенерировать пароль">
@@ -179,7 +179,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
       <!-- Saved rooms -->
       <div class="sec-hdr" id="roomSecHdr" style="margin-top:7px">
-        <span>▶</span><span>Комнаты</span><span class="arrow">›</span>
+        <span>▶</span><span>Норы</span><span class="arrow">›</span>
       </div>
       <div class="sec-body" id="roomSecBody">
         <div class="chips" id="roomChips" style="margin-top:6px"></div>
@@ -187,10 +187,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
 
     <div class="hint">
-      <b>Как работает:</b> пароль хешируется в уникальный ID канала. Попасть в комнату могут только те, кто знает тот же пароль. Регистрации нет. История 24 ч.
+      <b>Как работает:</b> пароль хешируется в уникальный ID канала. Попасть в нору могут только те крысы, кто знает тот же пароль. Регистрации нет. История 24 ч.
     </div>
     <div id="err"></div>
-    <button id="loginBtn">Войти в комнату</button>
+    <button id="loginBtn">Войти в нору</button>
   </div>
 </div>
 
@@ -199,7 +199,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="hdr">
     <div class="rav" id="rav">##</div>
     <div class="hdi">
-      <h2 id="rname">Комната</h2>
+      <h2 id="rname">Нора</h2>
       <div class="sub"><div class="dot off" id="sdot"></div><span id="stext">—</span></div>
     </div>
     <div style="display:flex;gap:6px">
