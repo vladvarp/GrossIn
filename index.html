@@ -299,6 +299,9 @@ function deleteRoom(p){lsSet('pc_rooms',savedRooms().filter(x=>x!==p));renderChi
 function getLastUsed(){try{return JSON.parse(localStorage.getItem('pc_last')||'null')}catch{return null}}
 function setLastUsed(nick,room){localStorage.setItem('pc_last',JSON.stringify({n:nick,r:room}))}
 
+function wasLoggedOut(){try{return localStorage.getItem('pc_logged_out')==='1'}catch{return false}}
+function setLoggedOut(v){localStorage.setItem('pc_logged_out',v?'1':'0')}
+
 function renderChips(){
   const nc=$('nickChips'), rc=$('roomChips');
   nc.innerHTML=''; rc.innerHTML='';
@@ -330,13 +333,19 @@ function renderChips(){
 }
 
 /* section toggle */
-function initSec(hdrId,bodyId){
+function initSec(hdrId,bodyId,storageKey){
   const hdr=$(''+hdrId), body=$(''+bodyId);
   hdr.addEventListener('click',()=>{
     const open=body.classList.contains('open');
     body.classList.toggle('open',!open);
     hdr.classList.toggle('open',!open);
+    localStorage.setItem(storageKey,!open?'1':'0');
   });
+  const saved=localStorage.getItem(storageKey);
+  if(saved==='1'){
+    body.classList.add('open');
+    hdr.classList.add('open');
+  }
 }
 
 /* ════════════════════════════════
@@ -421,6 +430,7 @@ async function doLogin(){
       saveNick(nick);
       saveRoom(pass);
       setLastUsed(nick,pass);
+      setLoggedOut(false);
       renderChips();
       $('login').style.display='none';
       $('chat').style.display='flex';
@@ -731,6 +741,7 @@ $('copyBtn').addEventListener('click',async()=>{
 $('logoutBtn').addEventListener('click',()=>{
   confirm('Выход','Выйти из норы?','Выйти',(idx)=>{
     if(idx!==1) return;
+    setLoggedOut(true);
     clearInterval(S.timer);
     S={topic:'',nick:'',pass:'',since:0,timer:null,known:new Set(),queue:[],sending:false};
     $('chat').style.display='none';
@@ -763,12 +774,12 @@ $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()}
 /* ════════════════════════════════
    INIT
  ════════════════════════════════ */
-initSec('nickSecHdr','nickSecBody');
-initSec('roomSecHdr','roomSecBody');
+initSec('nickSecHdr','nickSecBody','pc_nick_sec_open');
+initSec('roomSecHdr','roomSecBody','pc_room_sec_open');
 renderChips();
 
 const last=getLastUsed();
-if(last&&last.n&&last.r){
+if(last&&last.n&&last.r&&!wasLoggedOut()){
   $('uname').value=last.n;
   $('rpass').value=last.r;
   doLogin();
