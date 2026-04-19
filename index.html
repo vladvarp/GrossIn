@@ -143,9 +143,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div id="login">
   <div class="logo">
     <div class="logo-ring">
-      <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="1.8" stroke-linecap="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
+      <span style="font-size:26px">🐀</span>
     </div>
     <h1>ChrisoChat</h1>
     <p>Крысиный мессенджер · без СМС и регистраций</p>
@@ -279,6 +277,9 @@ function saveRoom(p){
 function deleteNick(n){lsSet('pc_nicks',savedNicks().filter(x=>x!==n));renderChips()}
 function deleteRoom(p){lsSet('pc_rooms',savedRooms().filter(x=>x!==p));renderChips()}
 
+function getLastUsed(){try{return JSON.parse(localStorage.getItem('pc_last')||'null')}catch{return null}}
+function setLastUsed(nick,room){localStorage.setItem('pc_last',JSON.stringify({n:nick,r:room}))}
+
 function renderChips(){
   const nc=$('nickChips'), rc=$('roomChips');
   nc.innerHTML=''; rc.innerHTML='';
@@ -384,6 +385,7 @@ async function doLogin(){
       hideLoad();
       saveNick(nick);
       saveRoom(pass);
+      setLastUsed(nick,pass);
       renderChips();
       $('login').style.display='none';
       $('chat').style.display='flex';
@@ -723,10 +725,18 @@ $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()}
 
 /* ════════════════════════════════
    INIT
-════════════════════════════════ */
+ ════════════════════════════════ */
 initSec('nickSecHdr','nickSecBody');
 initSec('roomSecHdr','roomSecBody');
 renderChips();
+
+const last=getLastUsed();
+if(last&&last.n&&last.r){
+  $('uname').value=last.n;
+  $('rpass').value=last.r;
+  doLogin();
+}
+
 $('genPass').addEventListener('click',()=>{
   const dice='⚀⚁⚂⚃⚄⚅';
   let pass='';
