@@ -79,8 +79,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #msgs::-webkit-scrollbar{width:4px}
 #msgs::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
 
-.divider{text-align:center;font-size:11px;color:var(--text3);margin:10px 0 6px;display:flex;align-items:center;gap:10px}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.divider{display:none}
 
 .mrow{display:flex;gap:8px;align-items:flex-end;max-width:74%;animation:msgIn .18s ease}
 .mrow.own{align-self:flex-end;flex-direction:row-reverse}
@@ -358,7 +357,12 @@ function confirm(title,msg,ok,onOk){dialog(title,msg,[{label:'Отмена',ok:f
 const COLORS=['#7c6af7','#4caf82','#f06b6b','#f0a050','#50c8f0','#c070e8','#7ad4a0','#f07090','#e8c84a'];
 function strColor(s){let h=5381;for(const c of s)h=((h<<5)+h)^c.charCodeAt(0);return COLORS[Math.abs(h)%COLORS.length]}
 function initials(s){return s.slice(0,2).toUpperCase()}
-function fmtTime(ts){return new Date(ts).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}
+function fmtTime(ts){
+  const d=new Date(ts);
+  const time=d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const date=d.toLocaleDateString('ru-RU',{day:'numeric',month:'numeric',year:'numeric'});
+  return date+' '+time;
+}
 function fmtDate(ts){return new Date(ts).toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}
 
 async function sha256hex(str){
@@ -454,15 +458,13 @@ async function loadHistory(){
   if(!res.ok) throw new Error('HTTP '+res.status);
   const text=await res.text();
   $('msgs').innerHTML='';
-  let lastDate='',maxT=0;
+  let maxT=0;
   for(const line of text.trim().split('\n').filter(Boolean)){
     try{
       const ev=JSON.parse(line);
       if(ev.event!=='message') continue;
       const ts=ev.time*1000;
       if(ev.time>maxT) maxT=ev.time;
-      const d=fmtDate(ts);
-      if(d!==lastDate){appendDiv(d);lastDate=d}
       appendMsg(ev,false);
       S.known.add(ev.id);
     }catch(_){}
@@ -560,11 +562,7 @@ function buildMsgEl({nick,text,ts,state,animate,id,pending}){
   return row;
 }
 
-function appendDiv(label){
-  const d=document.createElement('div');
-  d.className='divider';d.textContent=label;
-  $('msgs').appendChild(d);
-}
+function appendDiv(label){}
 
 /* ════════════════════════════════
    POLLING
@@ -594,10 +592,6 @@ async function poll(){
       try{
         const ev=JSON.parse(line);
         if(ev.event!=='message'||S.known.has(ev.id)) continue;
-        const ts=ev.time*1000;
-        const d=fmtDate(ts);
-        const last=m.querySelector('.divider:last-of-type');
-        if(!last||last.textContent!==d) appendDiv(d);
         appendMsg(ev,true);
         if(ev.time>maxT) maxT=ev.time;
         got=true;
