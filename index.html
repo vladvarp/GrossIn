@@ -31,6 +31,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .field input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text);font-size:15px;padding:10px 14px;outline:none;transition:border-color .2s;font-family:inherit}
 .field input:focus{border-color:var(--accent)}
 .field input::placeholder{color:var(--text3)}
+.input-with-btn{display:flex;gap:6px}
+.input-with-btn input{flex:1}
+.gen-btn{width:42px;height:42px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s}
+.gen-btn:hover{background:var(--bg4);color:var(--accent2)}
+.gen-btn svg{width:20px;height:20px}
 
 /* saved chips row */
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;min-height:0}
@@ -164,7 +169,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <!-- Room password -->
     <div class="field">
       <label>Пароль комнаты</label>
-      <input id="rpass" type="password" placeholder="общий секрет для входа"/>
+      <div class="input-with-btn">
+        <input id="rpass" type="password" placeholder="общий секрет для входа"/>
+        <button id="genPass" class="gen-btn" title="Сгенерировать пароль">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="8" cy="8" r="1.5" fill="currentColor"/><circle cx="16" cy="8" r="1.5" fill="currentColor"/><circle cx="8" cy="16" r="1.5" fill="currentColor"/><circle cx="16" cy="16" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+          </svg>
+        </button>
+      </div>
       <!-- Saved rooms -->
       <div class="sec-hdr" id="roomSecHdr" style="margin-top:7px">
         <span>▶</span><span>Комнаты</span><span class="arrow">›</span>
@@ -715,6 +727,14 @@ $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()}
 initSec('nickSecHdr','nickSecBody');
 initSec('roomSecHdr','roomSecBody');
 renderChips();
+$('genPass').addEventListener('click',()=>{
+  const dice='⚀⚁⚂⚃⚄⚅';
+  let pass='';
+  for(let i=0;i<8;i++)pass+=dice[Math.floor(Math.random()*6)];
+  $('rpass').value=pass;
+  $('rpass').type='text';
+  renderChips();
+});
 </script>
 </body>
 </html>
