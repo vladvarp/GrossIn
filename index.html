@@ -46,6 +46,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .saved-del{width:24px;height:24px;background:transparent;border:none;border-radius:var(--rxs);color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s;flex-shrink:0}
 .saved-del:hover{background:var(--red);color:#fff}
 .saved-del svg{width:14px;height:14px}
+.tabs{display:flex;gap:4px;margin-bottom:8px}
+.tab{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);padding:8px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--adim);border-color:var(--accent);color:var(--accent2)}
 
 /* CHAT */
 #chat{display:none;width:100%;height:100vh;flex-direction:column;max-width:780px;margin:0 auto}
@@ -135,6 +139,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="hint">
       <b>Как работает:</b> пароль хешируется в уникальный ID канала — войти могут только те, кто знает тот же пароль. Регистрации нет, всё анонимно. История хранится 24 часа.
     </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="persons">Персоны</button>
+      <button class="tab" data-tab="rooms">Комнаты</button>
+    </div>
     <div id="savedList"></div>
     <div id="err"></div>
     <button id="loginBtn">Войти в комнату</button>
@@ -188,10 +196,14 @@ const NTFY='https://ntfy.sh';
 let S={topic:'',nick:'',since:0,timer:null,known:new Set(),pending:null};
 const $=id=>document.getElementById(id);
 const STORAGE_KEY='privchat_saved';
-const getSaved=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch{return[]}};
-const saveCred=(nick,pass)=>{const a=getSaved();const i=a.findIndex(x=>x.n===nick);if(i>=0)a[i].p=pass;else a.unshift({n:nick,p:pass});localStorage.setItem(STORAGE_KEY,JSON.stringify(a.slice(0,20)));renderSaved()};
-const delCred=(nick)=>{const a=getSaved().filter(x=>x.n!==nick);localStorage.setItem(STORAGE_KEY,JSON.stringify(a));renderSaved()};
-const renderSaved=()=>{const c=$('savedList'),v=$('uname').value.trim(),p=$('rpass').value,sel=getSaved().find(x=>x.n===v&&x.p===p);c.innerHTML=getSaved().map(x=>`<div class="saved-item${sel&&x.n===sel.n?' loaded':''}" data-n="${x.n}" data-p="${x.p}"><div class="saved-info"><div class="saved-nick">${x.n}</div><div class="saved-pass">••••••</div></div><button class="saved-del" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`).join('');c.querySelectorAll('.saved-item').forEach(el=>{el.addEventListener('click',e=>{if(e.target.closest('.saved-del'))return;$('uname').value=el.dataset.n;$('rpass').value=el.dataset.p;renderSaved()});el.querySelector('.saved-del').addEventListener('click',e=>{e.stopPropagation();delCred(el.dataset.n)})})}
+const getSaved=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch{return{persons:[],rooms:[]}}};
+const savePerson=(nick)=>{const s=getSaved();const i=s.persons.indexOf(nick);if(i<0){s.persons.unshift(nick);s.persons=s.persons.slice(0,20);localStorage.setItem(STORAGE_KEY,JSON.stringify(s));renderSaved()}};
+const saveRoom=(pass)=>{const s=getSaved();if(!s.rooms.includes(pass)){s.rooms.unshift(pass);s.rooms=s.rooms.slice(0,20);localStorage.setItem(STORAGE_KEY,JSON.stringify(s));renderSaved()}};
+const delPerson=(nick)=>{const s=getSaved();s.persons=s.persons.filter(x=>x!==nick);localStorage.setItem(STORAGE_KEY,JSON.stringify(s));renderSaved()};
+const delRoom=(pass)=>{const s=getSaved();s.rooms=s.rooms.filter(x=>x!==pass);localStorage.setItem(STORAGE_KEY,JSON.stringify(s));renderSaved()};
+let currentTab='persons';
+const renderSaved=()=>{const c=$('savedList');const s=getSaved();const v=$('uname').value.trim();const p=$('rpass').value;const list=currentTab==='persons'?s.persons:s.rooms;const isPerson=currentTab==='persons';const curVal=isPerson?v:p;c.innerHTML=list.map(x=>`<div class="saved-item${curVal===x?' loaded':''}" data-v="${x}"><div class="saved-info"><div class="saved-nick">${isPerson?x:'Комната '+x.slice(0,6)+'...'}</div><div class="saved-pass">${isPerson?'ник':'••••••'}</div></div><button class="saved-del" title="Удалить"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button></div>`).join('');c.querySelectorAll('.saved-item').forEach(el=>{el.addEventListener('click',e=>{if(e.target.closest('.saved-del'))return;const v=el.dataset.v;if(isPerson){$('uname').value=v;$('uname').dispatchEvent(new Event('input'))}else{$('rpass').value=v;$('rpass').dispatchEvent(new Event('input'))}renderSaved()});el.querySelector('.saved-del').addEventListener('click',e=>{e.stopPropagation();isPerson?delPerson(el.dataset.v):delRoom(el.dataset.v)})})};
+$('login').addEventListener('click',e=>{if(e.target.classList.contains('tab')){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');currentTab=e.target.dataset.tab;renderSaved()}});
 const COLORS=['#7c6af7','#4caf82','#f06b6b','#f0a050','#50c8f0','#c070e8','#7ad4a0','#f07090','#e8c84a'];
 
 function strColor(s){let h=5381;for(let c of s)h=((h<<5)+h)^c.charCodeAt(0);return COLORS[Math.abs(h)%COLORS.length]}
@@ -225,7 +237,8 @@ async function doLogin(){
   S.since=0;
   S.known=new Set();
   S.pending=null;
-  saveCred(nick,pass);
+  savePerson(nick);
+  saveRoom(pass);
 
   const label=hash.slice(0,6).toUpperCase();
   $('rname').textContent='Комната #'+label;
@@ -444,6 +457,7 @@ $('rpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()});
 $('uname').addEventListener('input',renderSaved);
 $('rpass').addEventListener('input',renderSaved);
+renderSaved();
 </script>
 </body>
 </html>
