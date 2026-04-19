@@ -383,6 +383,7 @@ async function doLogin(){
       renderChips();
       $('login').style.display='none';
       $('chat').style.display='flex';
+      scrollBot();
       setStatus('on','в эфире');
       startPoll();
       return;
