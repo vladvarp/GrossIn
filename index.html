@@ -224,6 +224,7 @@ async function doLogin(){
   S.nick=nick;
   S.since=0;
   S.known=new Set();
+  S.pending=null;
   saveCred(nick,pass);
 
   const label=hash.slice(0,6).toUpperCase();
