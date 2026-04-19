@@ -771,10 +771,24 @@ if(last&&last.n&&last.r){
 }
 
 $('pastePass').addEventListener('click',async()=>{
+  const doPaste=async()=>{
+    try{
+      const txt=await navigator.clipboard.readText();
+      if(txt){$('rpass').value=txt;renderChips()}
+    }catch(e){$('rpass').focus()}
+  };
   try{
-    const txt=await navigator.clipboard.readText();
-    if(txt){$('rpass').value=txt;renderChips()}
+    const perm=await navigator.permissions.query({name:'clipboard-read'});
+    if(perm.state==='granted'){doPaste();return}
+    if(perm.state==='prompt'){
+      confirm('Доступ к буферу','Приложению нужен доступ к буферу обмена для вставки пароля. Разрешить?','Разрешить',(idx)=>{
+        if(idx===1)doPaste();
+        else $('rpass').focus();
+      });
+      return;
+    }
   }catch(e){}
+  $('rpass').focus();
 });
 
 $('genPass').addEventListener('click',()=>{
