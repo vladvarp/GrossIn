@@ -486,6 +486,20 @@ function appendMsg(ev,animate){
   let nick='?',text='';
   try{const d=JSON.parse(ev.message||'{}');nick=d.n||'?';text=d.t||ev.message}
   catch(_){text=ev.message||''}
+  /* check if we have a pending message with same text from ourselves */
+  const pendingEl=Array.from(document.querySelectorAll('.pending .mbubble')).find(el=>el.textContent===text);
+  if(pendingEl){
+    const row=pendingEl.closest('.mrow');
+    row.dataset.msgId=ev.id;
+    row.removeAttribute('data-pending-id');
+    row.classList.remove('pending');
+    const st=row.querySelector('.mstatus');
+    if(st){
+      st.className='mstatus ok';
+      st.textContent='✓';
+    }
+    return;
+  }
   buildMsgEl({nick,text,ts:(ev.time||0)*1000,state:'ok',animate,id:ev.id});
 }
 
@@ -614,13 +628,6 @@ async function sendMsg(){
 
   /* show optimistic bubble immediately */
   const pid='p'+(++pendingSeq);
-  const m=$('msgs');
-  const atBot=m.scrollHeight-m.scrollTop-m.clientHeight<80;
-
-  /* day divider if needed */
-  const d=fmtDate(Date.now());
-  const last=m.querySelector('.divider:last-of-type');
-  if(!last||last.textContent!==d) appendDiv(d);
 
   buildMsgEl({nick:S.nick,text,ts:Date.now(),state:'pending',animate:true,pending:pid});
   scrollBot();
@@ -641,9 +648,7 @@ async function flushQueue(){
     const item=S.queue[0];
     const success=await trySend(item);
     if(success){
-      /* remove optimistic bubble immediately on success */
-      const el=document.querySelector(`[data-pending-id="${item.pid}"]`);
-      if(el) el.remove();
+      setPendingState(item.pid,'sent');
       S.queue.shift();
     } else {
       item.attempts++;
@@ -678,6 +683,10 @@ async function trySend(item){
 function setPendingState(pid,state){
   const el=document.querySelector(`[data-pending-id="${pid}"]`);
   if(!el) return;
+  if(state==='sent'){
+    /* handled in appendMsg */
+    return;
+  }
   el.classList.toggle('pending',state==='pending');
   el.classList.toggle('failed',state==='failed');
   const st=el.querySelector('.mstatus');
