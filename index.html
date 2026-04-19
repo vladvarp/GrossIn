@@ -57,7 +57,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #chat{display:none;width:100%;height:100vh;height:100dvh;flex-direction:column;max-width:780px;margin:0 auto}
 
 /* USER ISLAND */
-.island-wrap{flex-shrink:0;display:flex;justify-content:center;position:relative;pointer-events:none;padding:8px 18px 6px}
+.island-wrap{position:fixed;top:calc(68px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:100;pointer-events:none}
 .island-wrap .island{pointer-events:auto}
 .island{display:inline-flex;align-items:center;gap:10px;background:rgba(0,0,0,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.11);border-radius:50px;padding:6px 16px 6px 8px;cursor:pointer;transition:transform .15s,background .15s;user-select:none;position:relative}
 .island:hover{background:rgba(30,30,44,.85);transform:scale(1.02)}
@@ -209,6 +209,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="toast-wrap" id="toastWrap"></div>
 
+<!-- Island (floating) -->
+<div class="island-wrap" style="display:none">
+  <div class="island" id="island">
+    <div class="island-av" id="islandAv">🐭</div>
+    <div class="island-info">
+      <div class="island-name" id="islandName">—</div>
+      <div class="island-status"><span class="idot"></span><span id="islandCount">0 в сети</span></div>
+    </div>
+    <div class="opanel" id="opanel">
+      <div class="op-head">🟢 сейчас в норе</div>
+      <div id="opOnline"></div>
+      <div class="op-sect" id="opSeenSect" style="display:none">👁 были недавно</div>
+      <div id="opSeen"></div>
+    </div>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div id="login">
   <div class="logo">
@@ -258,23 +275,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="hbtn" id="logoutBtn" title="Выйти">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
-    </div>
-  </div>
-
-  <!-- Island -->
-  <div class="island-wrap">
-    <div class="island" id="island">
-      <div class="island-av" id="islandAv">🐭</div>
-      <div class="island-info">
-        <div class="island-name" id="islandName">—</div>
-        <div class="island-status"><span class="idot"></span><span id="islandCount">0 в сети</span></div>
-      </div>
-      <div class="opanel" id="opanel">
-        <div class="op-head">🟢 сейчас в норе</div>
-        <div id="opOnline"></div>
-        <div class="op-sect" id="opSeenSect" style="display:none">👁 были недавно</div>
-        <div id="opSeen"></div>
-      </div>
     </div>
   </div>
 
@@ -484,7 +484,7 @@ async function doLogin(){
     try{
       await loadHistory();hideLoad();
       saveNick(nick);saveRoom(pass);setLastUsed(nick,pass);setLoggedOut(false);renderChips();
-      $('login').style.display='none';$('chat').style.display='flex';
+      $('login').style.display='none';$('chat').style.display='flex';$('island').closest('.island-wrap').style.display='block'
       scrollBot();setStatus('on','в эфире');
       startPoll();
       S.presence.set(nick,{ts:Date.now()});
@@ -672,7 +672,7 @@ $('logoutBtn').addEventListener('click',()=>{
     if(idx!==1)return;
     setLoggedOut(true);clearInterval(S.timer);clearInterval(S.ptimer);
     S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map()};
-    $('chat').style.display='none';$('login').style.display='';
+    $('chat').style.display='none';$('login').style.display='';$('island').closest('.island-wrap').style.display='none'
     $('loginBtn').disabled=false;$('uname').value='';$('rpass').value='';$('err').textContent='';
     renderChips();
   });
