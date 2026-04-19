@@ -431,7 +431,10 @@ function renderOnlinePanel(){
 
 async function sendPresence(){
   if(!S.ptopic||!S.nick)return;
-  try{await fetch(`${NTFY}/${S.ptopic}`,{method:'POST',body:JSON.stringify({type:'presence',n:S.nick,ts:Date.now()}),headers:{'X-Priority':'min','X-TTL':'30'}})}catch(_){}
+  try{
+    const ok=await fetch(`${NTFY}/${S.ptopic}`,{method:'POST',body:JSON.stringify({type:'presence',n:S.nick,ts:Date.now()}),headers:{'X-Priority':'min','X-TTL':'30'}}).then(r=>r.ok);
+    if(ok)S.presence.set(S.nick,{ts:Date.now()});
+  }catch(_){}
 }
 
 let _prevOnline=new Set();
@@ -447,6 +450,7 @@ async function pollPresence(){
         const ev=JSON.parse(line);if(ev.event!=='message')continue;
         let d;try{d=JSON.parse(ev.message)}catch{continue}
         if(d.type!=='presence'||!d.n)continue;
+        if(d.leave){S.presence.delete(d.n);continue}
         S.presence.set(d.n,{ts:d.ts||now});
       }catch(_){}
     }
@@ -530,8 +534,8 @@ function appendMsg(ev,animate){
   try{const d=JSON.parse(ev.message||'{}');nick=d.n||'?';text=d.t||ev.message;photo=d.photo||''}
   catch(_){text=ev.message||''}
 
-  // Track presence from messages
-  if(nick!=='?'&&nick!==S.nick){
+  // Только живые сообщения с эфира — не из истории при входе
+  if(animate&&nick!=='?'&&nick!==S.nick){
     const wasOn=S.presence.has(nick)&&Date.now()-(S.presence.get(nick)?.ts||0)<PRESENCE_TTL;
     S.presence.set(nick,{ts:Date.now()});
     if(!wasOn)updateIsland();
@@ -670,11 +674,18 @@ $('copyBtn').addEventListener('click',async()=>{
 $('logoutBtn').addEventListener('click',()=>{
   confirmD('Выход','Выйти из норы?','Выйти',idx=>{
     if(idx!==1)return;
-    setLoggedOut(true);clearInterval(S.timer);clearInterval(S.ptimer);
-    S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map()};
-    $('chat').style.display='none';$('login').style.display='';$('island').closest('.island-wrap').style.display='none'
-    $('loginBtn').disabled=false;$('uname').value='';$('rpass').value='';$('err').textContent='';
-    renderChips();
+    const ptopic=S.ptopic,nick=S.nick;
+    setLoggedOut(true);
+    (async()=>{
+      if(ptopic&&nick){
+        try{await fetch(`${NTFY}/${ptopic}`,{method:'POST',body:JSON.stringify({type:'presence',n:nick,leave:true,ts:Date.now()}),headers:{'X-Priority':'min','X-TTL':'120'}})}catch(_){}
+      }
+      clearInterval(S.timer);clearInterval(S.ptimer);
+      S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map()};
+      $('chat').style.display='none';$('login').style.display='';$('island').closest('.island-wrap').style.display='none'
+      $('loginBtn').disabled=false;$('uname').value='';$('rpass').value='';$('err').textContent='';
+      renderChips();
+    })();
   });
 });
 
