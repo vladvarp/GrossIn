@@ -394,7 +394,10 @@ function toast(animal,txt,color){
 function updateIsland(){
   const now=Date.now();
   let cnt=0;
-  for(const[,info]of S.presence)if(now-info.ts<PRESENCE_TTL)cnt++;
+  for(const[nick,info]of S.presence){
+    if(nick===S.nick)continue;
+    if(now-info.ts<PRESENCE_TTL)cnt++;
+  }
   $('islandCount').textContent=cnt+' в сети';
   const c=strColor(S.nick||'x');
   $('islandAv').textContent=strAnimal(S.nick||'x');
@@ -406,6 +409,7 @@ function renderOnlinePanel(){
   const now=Date.now();
   const online=[],seen=[];
   for(const[nick,info]of S.presence){
+    if(nick===S.nick)continue;
     if(now-info.ts<PRESENCE_TTL)online.push({nick,ts:info.ts});
     else seen.push({nick,ts:info.ts});
   }
@@ -443,6 +447,12 @@ let _presenceBootstrapped=false;
 let _pollPresenceBusy=false;
 let _pollPresenceAgain=false;
 
+/** Не откатывать ts назад: старые события из длинного poll ntfy перезаписывали свежий онлайн после сообщения в чате */
+function mergePresenceTs(nick,incomingTs){
+  const prev=S.presence.get(nick)?.ts||0;
+  S.presence.set(nick,{ts:Math.max(incomingTs,prev)});
+}
+
 async function pollPresence(){
   if(!S.ptopic)return;
   if(_pollPresenceBusy){_pollPresenceAgain=true;return}
@@ -465,13 +475,16 @@ async function _pollPresenceRun(){
     let res;try{res=await fetch(`${NTFY}/${S.ptopic}/json?poll=1&since=${sinceSec}`,{headers:{Accept:'application/x-ndjson'},signal:ctrl.signal})}finally{clearTimeout(tid)}
     if(!res.ok)return;
     const txt=await res.text();const now=Date.now();
-    for(const line of txt.trim().split('\n').filter(Boolean)){
+    const rows=[];
+    for(const line of txt.trim().split('\n').filter(Boolean)){try{rows.push(JSON.parse(line))}catch(_){}}
+    rows.sort((a,b)=>(a.time||0)-(b.time||0));
+    for(const ev of rows){
       try{
-        const ev=JSON.parse(line);if(ev.event!=='message')continue;
+        if(ev.event!=='message')continue;
         let d;try{d=JSON.parse(ev.message)}catch{continue}
         if(d.type!=='presence'||!d.n)continue;
         if(d.leave){S.presence.delete(d.n);continue}
-        S.presence.set(d.n,{ts:d.ts||now});
+        mergePresenceTs(d.n,d.ts||now);
       }catch(_){}
     }
     const curOnline=new Set();
@@ -562,7 +575,7 @@ function appendMsg(ev,animate){
   // Только живые сообщения с эфира — не из истории при входе
   if(animate&&nick!=='?'&&nick!==S.nick){
     const wasOn=S.presence.has(nick)&&Date.now()-(S.presence.get(nick)?.ts||0)<PRESENCE_TTL;
-    S.presence.set(nick,{ts:Date.now()});
+    mergePresenceTs(nick,Date.now());
     if(!wasOn){
       if(_presenceBootstrapped){
         toast(strAnimal(nick),nick+' вошёл в нору',strColor(nick));
