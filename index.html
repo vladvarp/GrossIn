@@ -104,12 +104,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sysmsg{text-align:center;font-size:12px;color:var(--text3);padding:6px 0;font-style:italic}
 
 /* ── FOOTER ── */
-.ftr{padding:10px 18px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0}
-.irow{display:flex;align-items:flex-end;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px 6px 6px;transition:border-color .2s}
+.ftr{padding:10px 18px 14px;padding-bottom:calc(10px + env(safe-area-inset-bottom));background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0;position:relative}
+.irow{display:flex;align-items:flex-end;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:6px 8px 6px 6px;transition:border-color .2s;overflow:hidden}
 .irow:focus-within{border-color:var(--accent)}
-#minput{flex:1;background:transparent;border:none;color:var(--text);font-size:15px;font-family:inherit;outline:none;resize:none;max-height:120px;line-height:1.5;padding:3px 0;scrollbar-width:none}
+#minput{flex:1;background:transparent;border:none;color:var(--text);font-size:15px;font-family:inherit;outline:none;resize:none;max-height:120px;line-height:1.5;padding:3px 0;scrollbar-width:none;overflow-x:hidden}
 #minput::placeholder{color:var(--text3)}
-#sendBtn{width:36px;height:36px;background:var(--accent);border:none;border-radius:9px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s,transform .1s}
+#sendBtn{width:36px;height:36px;background:var(--accent);border:none;border-radius:9px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity .15s,transform .1s;margin-left:2px}
 #sendBtn:hover{opacity:.84}
 #sendBtn:active{transform:scale(.93)}
 #sendBtn:disabled{opacity:.3;cursor:default}
@@ -118,16 +118,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-flex;align-items:center;gap:3px;background:rgba(76,175,130,.1);border:1px solid rgba(76,175,130,.2);border-radius:4px;padding:1px 6px;font-size:10px;color:var(--green)}
 
 /* emoji picker */
-.emoji-btn{width:36px;height:36px;background:transparent;border:none;border-radius:var(--rxs);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s;font-size:20px;padding:0}
+.emoji-btn{width:36px;height:36px;background:transparent;border:none;border-radius:var(--rxs);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,color .15s;font-size:20px;padding:0;overflow:hidden;line-height:1}
 .emoji-btn:hover{background:var(--bg4);color:var(--accent2)}
-#emojiPicker{position:absolute;bottom:100%;left:10px;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px;display:none;z-index:50;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+#emojiPicker{position:absolute;bottom:100%;left:14px;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px;display:none;z-index:50;width:356px;box-shadow:0 4px 20px rgba(0,0,0,.4);overflow-x:hidden}
 #emojiPicker.show{display:block}
-#emojiPicker .tabs{display:flex;gap:4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-#emojiPicker .tab{background:transparent;border:none;color:var(--text2);padding:4px 8px;font-size:12px;border-radius:var(--rxs);cursor:pointer;transition:background .15s,color .15s}
+#emojiPicker .tabs{display:flex;gap:4px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0}
+#emojiPicker .tab{background:transparent;border:none;color:var(--text2);padding:4px 8px;font-size:12px;border-radius:var(--rxs);cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
 #emojiPicker .tab:hover{background:var(--bg3)}
 #emojiPicker .tab.active{background:var(--adim);color:var(--accent2)}
-#emojiPicker .em-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:180px;overflow-y:auto}
-#emojiPicker .em{font-size:18px;padding:4px;cursor:pointer;border-radius:var(--rxs);transition:background .15s,transform .1s}
+#emojiPicker .em-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:180px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent;-webkit-overflow-scrolling:touch}
+#emojiPicker .em-grid::-webkit-scrollbar{width:4px}
+#emojiPicker .em-grid::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+#emojiPicker .em-grid::-webkit-scrollbar-track{background:transparent}
+#emojiPicker .em{font-size:18px;padding:4px;cursor:pointer;border-radius:var(--rxs);transition:background .15s,transform .1s;text-align:center}
 #emojiPicker .em:hover{background:var(--bg4);transform:scale(1.2)}
 
 /* ── OVERLAY ── */
@@ -152,7 +155,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dialog-btns button:hover{opacity:.85}
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes msgIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
-@media(max-width:600px){#msgs{padding:10px 12px}.hdr{padding:10px 12px}.ftr{padding:8px 10px 12px}.mrow{max-width:88%}}
+@media(max-width:600px){.ftr{padding:8px 10px 12px}#msgs{padding:10px 12px}.hdr{padding:10px 12px}.mrow{max-width:88%}#emojiPicker{left:10px;width:280px}#emojiPicker .em-grid{grid-template-columns:repeat(7,1fr)}}
+@media(min-width:601px){:root{--ftr-w:316px}}
 </style>
 </head>
 <body>
