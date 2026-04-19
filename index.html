@@ -541,12 +541,6 @@ async function poll(){
         appendMsg(ev,true);
         if(ev.time>maxT) maxT=ev.time;
         got=true;
-
-        /* confirm any pending that matches by nick+text */
-        try{
-          const parsed=JSON.parse(ev.message||'{}');
-          confirmPending(parsed.n,parsed.t,ev.id);
-        }catch(_){}
       }catch(_){}
     }
     if(maxT>S.since) S.since=maxT;
@@ -601,11 +595,13 @@ async function flushQueue(){
     const item=S.queue[0];
     const success=await trySend(item);
     if(success){
+      /* remove optimistic bubble immediately on success */
+      const el=document.querySelector(`[data-pending-id="${item.pid}"]`);
+      if(el) el.remove();
       S.queue.shift();
     } else {
       item.attempts++;
       if(item.attempts>=MAX_RETRY_SEND){
-        /* mark as failed */
         setPendingState(item.pid,'failed');
         S.queue.shift();
       } else {
@@ -652,16 +648,7 @@ function setPendingState(pid,state){
   }
 }
 
-function confirmPending(nick,text,evId){
-  /* remove optimistic bubble once server confirms */
-  for(const item of [...S.queue]){
-    if(item.text===text){
-      const el=document.querySelector(`[data-pending-id="${item.pid}"]`);
-      if(el) el.remove();
-      return;
-    }
-  }
-}
+
 
 function retryPending(pid){
   /* find text from DOM, re-queue */
