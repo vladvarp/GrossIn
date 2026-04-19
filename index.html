@@ -68,7 +68,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mrow.own{align-self:flex-end;flex-direction:row-reverse}
 .mrow.other{align-self:flex-start}
 .mav{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
-.mwrap{display:flex;flex-direction:column}
+.mwrap{display:flex;flex-direction:column;position:relative}
 .mrow.own .mwrap{align-items:flex-end}
 .msender{font-size:11px;color:var(--text3);margin-bottom:3px;padding:0 12px}
 .mbubble{padding:9px 14px;border-radius:16px;font-size:14.5px;line-height:1.5;word-break:break-word}
@@ -76,6 +76,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mrow.other .mbubble{background:rgba(255,255,255,.05);border:1px solid var(--border);border-bottom-left-radius:4px}
 .mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 12px}
 .mrow.own .mtime{text-align:right}
+.pending .mbubble{opacity:.6}
+.pending .mbubble::after{content:' ·';animation:blink 1s infinite}
+.pdel{position:absolute;right:-28px;top:50%;transform:translateY(-50%);width:22px;height:22px;background:transparent;border:none;border-radius:var(--rxs);color:var(--text3);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .15s,color .15s}
+.pending .pdel{opacity:1}
+.pdel:hover{background:var(--red);color:#fff}
+.pdel svg{width:12px;height:12px}
+@keyframes blink{50%{opacity:.3}}
 .sysmsg{text-align:center;font-size:12px;color:var(--text3);padding:6px 0;font-style:italic}
 .ftr{padding:12px 20px 16px;background:var(--bg2);border-top:1px solid var(--border);flex-shrink:0}
 .irow{display:flex;align-items:flex-end;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:8px 10px 8px 16px;transition:border-color .2s}
@@ -178,7 +185,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 const NTFY='https://ntfy.sh';
-let S={topic:'',nick:'',since:0,timer:null,known:new Set()};
+let S={topic:'',nick:'',since:0,timer:null,known:new Set(),pending:null};
 const $=id=>document.getElementById(id);
 const STORAGE_KEY='privchat_saved';
 const getSaved=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]')}catch{return[]}};
@@ -268,7 +275,7 @@ async function loadHistory(){
   scrollBot();
 }
 
-function appendMsg(ev,animate){
+function appendMsg(ev,animate,pending){
   if(S.known.has(ev.id)) return;
   S.known.add(ev.id);
   let nick='?',text='';
@@ -280,6 +287,7 @@ function appendMsg(ev,animate){
 
   const row=document.createElement('div');
   row.className='mrow '+(isOwn?'own':'other');
+  if(pending) row.classList.add('pending');
   if(!animate) row.style.animation='none';
 
   if(!isOwn){
@@ -293,6 +301,7 @@ function appendMsg(ev,animate){
 
   const wrap=document.createElement('div');
   wrap.className='mwrap';
+  wrap.style.position='relative';
 
   if(!isOwn){
     const snd=document.createElement('div');
@@ -306,6 +315,15 @@ function appendMsg(ev,animate){
   bub.className='mbubble';
   bub.textContent=text;
   wrap.appendChild(bub);
+
+  if(pending){
+    const del=document.createElement('button');
+    del.className='pdel';
+    del.title='Удалить';
+    del.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    del.onclick=()=>{row.remove();S.pendingDelete=true};
+    wrap.appendChild(del);
+  }
 
   const tm=document.createElement('div');
   tm.className='mtime';
@@ -338,11 +356,13 @@ async function poll(){
     const m=$('msgs');
     const atBot=m.scrollHeight-m.scrollTop-m.clientHeight<80;
     let got=false,maxT=S.since;
+    const pendingRows=m.querySelectorAll('.pending');
     for(const line of text.trim().split('\n').filter(Boolean)){
       try{
         const ev=JSON.parse(line);
         if(ev.event!=='message'||S.known.has(ev.id)) continue;
-        /* insert day divider if needed */
+        const msgText=JSON.parse(ev.message||'{}').t||'';
+        pendingRows.forEach(row=>{if(row.querySelector('.mbubble').textContent===msgText)row.remove()});
         const ts=ev.time*1000;
         const d=fmtDate(ts);
         const last=m.querySelector('.divider:last-of-type');
@@ -354,6 +374,8 @@ async function poll(){
     }
     if(maxT>S.since) S.since=maxT;
     if(got&&atBot) scrollBot();
+    const remaining=m.querySelector('.pending');
+    if(!remaining)S.pending=null;
     setStatus(true,'в эфире');
   }catch(e){
     setStatus(false,'нет связи…');
@@ -364,16 +386,24 @@ async function sendMsg(){
   const inp=$('minput');
   const text=inp.value.trim();
   if(!text) return;
+  const id='p'+Date.now();
+  const ev={id,message:JSON.stringify({n:S.nick,t:text}),time:Math.floor(Date.now()/1000)};
+  appendMsg(ev,true,true);
+  scrollBot();
   inp.value='';autoResize();
   $('sendBtn').disabled=true;
+  S.pending={id,text};
   try{
-    /* compact JSON payload: n=nick, t=text */
     await fetch(`${NTFY}/${S.topic}`,{
       method:'POST',
       body:JSON.stringify({n:S.nick,t:text}),
     });
+    S.pending=null;
     await poll();
-  }catch(e){}
+  }catch(e){
+    S.pending={id,text};
+    setStatus(false,'нет связи…');
+  }
   $('sendBtn').disabled=($('minput').value.trim()==='');
   inp.focus();
 }
@@ -389,7 +419,7 @@ $('copyBtn').addEventListener('click',async()=>{
 $('logoutBtn').addEventListener('click',()=>{
   if(!confirm('Выйти из комнаты?')) return;
   clearInterval(S.timer);
-  S={topic:'',nick:'',since:0,timer:null,known:new Set()};
+  S={topic:'',nick:'',since:0,timer:null,known:new Set(),pending:null};
   $('chat').style.display='none';
   $('login').style.display='';
   $('loginBtn').disabled=false;
