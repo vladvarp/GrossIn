@@ -310,6 +310,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 const NTFY='https://ntfy.sh';
 const MAX_RETRY_LOGIN=4, MAX_RETRY_SEND=5, POLL_MS=2500;
 const PRESENCE_TTL=15000; // online if heartbeat within 15s
+const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории ntfy запрашивать (шире TTL — чтобы не терять события на границе)
 
 /* ══ ANIMALS & COLORS ══ */
 const ANIMALS=['🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦆','🦉','🦇','🐺','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🦖','🐙','🦑','🐬','🦈','🐊','🦓','🐘','🦒','🦘','🦔'];
@@ -438,11 +439,30 @@ async function sendPresence(){
 }
 
 let _prevOnline=new Set();
+let _presenceBootstrapped=false;
+let _pollPresenceBusy=false;
+let _pollPresenceAgain=false;
+
 async function pollPresence(){
   if(!S.ptopic)return;
+  if(_pollPresenceBusy){_pollPresenceAgain=true;return}
+  _pollPresenceBusy=true;
   try{
-    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),5000);
-    let res;try{res=await fetch(`${NTFY}/${S.ptopic}/json?poll=1&since=${Math.floor((Date.now()-PRESENCE_TTL)/1000)}`,{headers:{Accept:'application/x-ndjson'},signal:ctrl.signal})}finally{clearTimeout(tid)}
+    while(true){
+      _pollPresenceAgain=false;
+      await _pollPresenceRun();
+      if(!_pollPresenceAgain)break;
+    }
+  }finally{
+    _pollPresenceBusy=false;
+  }
+}
+
+async function _pollPresenceRun(){
+  try{
+    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),8000);
+    const sinceSec=Math.floor(Date.now()/1000)-PRESENCE_POLL_SINCE_SEC;
+    let res;try{res=await fetch(`${NTFY}/${S.ptopic}/json?poll=1&since=${sinceSec}`,{headers:{Accept:'application/x-ndjson'},signal:ctrl.signal})}finally{clearTimeout(tid)}
     if(!res.ok)return;
     const txt=await res.text();const now=Date.now();
     for(const line of txt.trim().split('\n').filter(Boolean)){
@@ -454,12 +474,16 @@ async function pollPresence(){
         S.presence.set(d.n,{ts:d.ts||now});
       }catch(_){}
     }
-    // detect arrivals
     const curOnline=new Set();
     for(const[nick,info]of S.presence)if(now-info.ts<PRESENCE_TTL)curOnline.add(nick);
-    for(const nick of curOnline){if(!_prevOnline.has(nick)&&nick!==S.nick)toast(strAnimal(nick),nick+' вошёл в нору',strColor(nick))}
-    for(const nick of _prevOnline){if(!curOnline.has(nick)&&nick!==S.nick)toast(strAnimal(nick),nick+' покинул нору',strColor(nick))}
-    _prevOnline=curOnline;
+    if(!_presenceBootstrapped){
+      _prevOnline=new Set(curOnline);
+      _presenceBootstrapped=true;
+    }else{
+      for(const nick of curOnline){if(!_prevOnline.has(nick)&&nick!==S.nick)toast(strAnimal(nick),nick+' вошёл в нору',strColor(nick))}
+      for(const nick of _prevOnline){if(!curOnline.has(nick)&&nick!==S.nick)toast(strAnimal(nick),nick+' покинул нору',strColor(nick))}
+      _prevOnline=curOnline;
+    }
     updateIsland();
   }catch(_){}
 }
@@ -488,13 +512,14 @@ async function doLogin(){
     try{
       await loadHistory();hideLoad();
       saveNick(nick);saveRoom(pass);setLastUsed(nick,pass);setLoggedOut(false);renderChips();
+      _presenceBootstrapped=false;
+      S.presence.set(nick,{ts:Date.now()});
+      updateIsland();
+      await sendPresence();
+      await pollPresence();
       $('login').style.display='none';$('chat').style.display='flex';$('island').closest('.island-wrap').style.display='block'
       scrollBot();setStatus('on','в эфире');
       startPoll();
-      S.presence.set(nick,{ts:Date.now()});
-      updateIsland();
-      sendPresence();
-      _prevOnline=new Set([nick]);
       S.ptimer=setInterval(async()=>{await sendPresence();await pollPresence();updateIsland()},6000);
       return;
     }catch(e){lastErr=e.message||String(e);if(a<MAX_RETRY_LOGIN)await sleep(800*a)}
@@ -538,7 +563,13 @@ function appendMsg(ev,animate){
   if(animate&&nick!=='?'&&nick!==S.nick){
     const wasOn=S.presence.has(nick)&&Date.now()-(S.presence.get(nick)?.ts||0)<PRESENCE_TTL;
     S.presence.set(nick,{ts:Date.now()});
-    if(!wasOn)updateIsland();
+    if(!wasOn){
+      if(_presenceBootstrapped){
+        toast(strAnimal(nick),nick+' вошёл в нору',strColor(nick));
+        _prevOnline.add(nick);
+      }
+      updateIsland();
+    }
   }
 
   // Resolve pending
@@ -681,6 +712,7 @@ $('logoutBtn').addEventListener('click',()=>{
         try{await fetch(`${NTFY}/${ptopic}`,{method:'POST',body:JSON.stringify({type:'presence',n:nick,leave:true,ts:Date.now()}),headers:{'X-Priority':'min','X-TTL':'120'}})}catch(_){}
       }
       clearInterval(S.timer);clearInterval(S.ptimer);
+      _presenceBootstrapped=false;_prevOnline=new Set();
       S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map()};
       $('chat').style.display='none';$('login').style.display='';$('island').closest('.island-wrap').style.display='none'
       $('loginBtn').disabled=false;$('uname').value='';$('rpass').value='';$('err').textContent='';
