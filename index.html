@@ -348,7 +348,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="sec-body" id="nickSecBody"><div class="chips" id="nickChips" style="margin-top:6px"></div></div>
     </div>
     <div class="field">
-      <label>Пароль логово</label>
+      <label>Пароль норы</label>
       <div class="input-with-btn">
         <input id="rpass" type="password" placeholder="Секрет для входа"/>
         <button id="pastePass" class="gen-btn" title="Вставить из буфера">
@@ -533,8 +533,8 @@ const savedNicks=()=>lsGet('pc_nicks');
 const savedRooms=()=>lsGet('pc_rooms');
 function saveNick(n){if(!n)return;lsSet('pc_nicks',[n,...savedNicks().filter(x=>x!==n)].slice(0,12))}
 function saveRoom(p){if(!p)return;lsSet('pc_rooms',[p,...savedRooms().filter(x=>x!==p)].slice(0,12))}
-function deleteNick(n){lsSet('pc_nicks',savedNicks().filter(x=>x!==n));renderChips()}
-function deleteRoom(p){lsSet('pc_rooms',savedRooms().filter(x=>x!==p));renderChips()}
+function deleteNick(n){confirmD('Удаление ника','Удалить никнейм "'+n+'" из памяти?','Удалить',idx=>{if(idx===1){lsSet('pc_nicks',savedNicks().filter(x=>x!==n));renderChips()}})}
+function deleteRoom(p){confirmD('Удаление пароля','Удалить пароль норы из памяти?','Удалить',idx=>{if(idx===1){lsSet('pc_rooms',savedRooms().filter(x=>x!==p));renderChips()}})}
 function getLastUsed(){try{return JSON.parse(localStorage.getItem('pc_last')||'null')}catch{return null}}
 function setLastUsed(n,r){localStorage.setItem('pc_last',JSON.stringify({n,r}))}
 function wasLoggedOut(){try{return localStorage.getItem('pc_logged_out')==='1'}catch{return false}}
