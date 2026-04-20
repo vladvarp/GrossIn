@@ -130,6 +130,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* MESSAGES */
 #msgs{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:3px;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
 #msgs.empty{justify-content:center;align-items:center}
+#msgs.sparse{justify-content:flex-end}
 #msgs::-webkit-scrollbar{width:4px}
 #msgs::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
 .mrow{display:flex;gap:8px;align-items:flex-end;max-width:74%;animation:msgIn .18s ease}
@@ -968,9 +969,17 @@ function eventFallbackKey(ev){
   const m=typeof ev.message==='string'?ev.message:'';
   return `${t}|${m}`;
 }
+function updateMsgVerticalLayout(){
+  const msgs=$('msgs');
+  if(!msgs)return;
+  if(msgs.classList.contains('empty')){msgs.classList.remove('sparse');return}
+  const count=msgs.querySelectorAll('.mrow').length;
+  msgs.classList.toggle('sparse',count>0&&count<=3);
+}
 function showEmptyDenMessage(){
   const msgs=$('msgs');
   msgs.classList.add('empty');
+  msgs.classList.remove('sparse');
   if(msgs.querySelector('.sysmsg'))return;
   const e=mk('div','sysmsg');
   e.textContent='Нора пуста. Поделитесь паролем — и крысы окажутся здесь.';
@@ -981,6 +990,7 @@ function hideEmptyDenMessage(){
   msgs.classList.remove('empty');
   const e=msgs.querySelector('.sysmsg');
   if(e)e.remove();
+  updateMsgVerticalLayout();
 }
 
 /* ══ HISTORY ══ */
@@ -1102,7 +1112,7 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote}){
     st.textContent=state==='pending'?'отправка…':state==='failed'?'ошибка':'✓';tm.appendChild(st);
     if(state==='failed'&&pending){const rb=mk('button','retry-btn');rb.textContent='повторить';rb.onclick=()=>retryP(pending);tm.appendChild(rb)}
   }
-  wrap.appendChild(tm);row.appendChild(wrap);$('msgs').appendChild(row);return row;
+  wrap.appendChild(tm);row.appendChild(wrap);$('msgs').appendChild(row);updateMsgVerticalLayout();return row;
 }
 
 /* ══ LIGHTBOX ══ */
