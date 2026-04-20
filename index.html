@@ -1469,7 +1469,7 @@ async function sendPhoto(file){
   if(!url){
     if(row)row.remove();
     updateMsgVerticalLayout();
-    alertD('Не удалось загрузить фото','Проверьте интернет и размер файла. Если не открывается хостинг Litterbox, в коде можно задать IMGBB_KEY (api.imgbb.com).','ОК',()=>{});
+    alertD('Не удалось загрузить фото','Проверьте интернет и размер файла.','ОК',()=>{});
     return;
   }
 
