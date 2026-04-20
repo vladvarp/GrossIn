@@ -70,6 +70,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .island-tools{display:flex;align-items:center;gap:6px;margin-left:2px}
 .island-tool-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s}
 .island-tool-btn:hover{background:rgba(255,255,255,.1);color:var(--accent2)}
+.island-signal{display:inline-flex;align-items:flex-end;gap:2px;height:14px;padding:0 2px}
+.island-signal .bar{width:3px;border-radius:2px;background:var(--text3);opacity:.35}
+.island-signal .b1{height:4px}.island-signal .b2{height:7px}.island-signal .b3{height:10px}.island-signal .b4{height:13px}
+.island-signal.l1 .b1{opacity:1;background:var(--red)}
+.island-signal.l2 .b1,.island-signal.l2 .b2{opacity:1;background:var(--amber)}
+.island-signal.l3 .b1,.island-signal.l3 .b2,.island-signal.l3 .b3{opacity:1;background:var(--green)}
+.island-signal.l4 .bar{opacity:1;background:var(--green)}
+.island-signal.off .bar{background:var(--text3);opacity:.28}
 @keyframes idot{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* online panel */
@@ -245,6 +253,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .srv-row.selected{border-color:var(--accent);background:var(--adim)}
 .srv-row.selected .srv-check{display:flex}
 .srv-flag{font-size:16px;flex-shrink:0;line-height:1}
+.srv-icon{font-size:16px;flex-shrink:0;line-height:1}
 .srv-label{flex:1;font-size:13px;font-weight:500;color:var(--text)}
 .srv-ping{font-size:11px;font-weight:600;min-width:52px;text-align:right;flex-shrink:0}
 .srv-ping.good{color:var(--green)}
@@ -293,7 +302,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="island-status"><span class="idot"></span><span id="islandCount">0 в сети</span></div>
     </div>
     <div class="island-tools">
-      <button type="button" id="islandSrvBtn" class="island-tool-btn" title="Серверы">🌐</button>
+      <button type="button" id="islandSrvBtn" class="island-tool-btn" title="Серверы">🛰️</button>
+      <div id="islandSignal" class="island-signal off" title="Сигнал сервера">
+        <span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="bar b4"></span>
+      </div>
     </div>
     <div class="opanel" id="opanel">
       <div class="op-head">🟢 сейчас в норе</div>
@@ -343,7 +355,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="srv-hdr-left">🌐 <span>Сервер</span></div>
         <span class="srv-hdr-arrow">›</span>
       </div>
-      <div id="srvSelectedInfo">выбирается автоматически…</div>
+      <div id="srvSelectedInfo">выберите сервер…</div>
       <div class="srv-tools"><button type="button" class="srv-ping-btn" id="loginPingNowBtn">Пинг сейчас</button></div>
       <div class="srv-body" id="srvBody">
         <div class="srv-list" id="srvList"></div>
@@ -404,7 +416,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="irow">
        <button class="iicobtn" id="emojiBtn" title="Эмодзи">🐹</button>
-       <input type="file" id="photoInput" accept="image/*" style="display:none">
       <textarea id="minput" rows="1" placeholder="Написать сообщение…" maxlength="2000"></textarea>
       <button id="sendBtn" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -416,14 +427,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 /* ══ CONFIG ══ */
 const NTFY_SERVERS=[
-  {url:'https://ntfy.sh',       label:'ntfy.sh',         flag:'🇺🇸'},
-  {url:'https://ntfy.adminforge.de', label:'adminforge.de', flag:'🇩🇪'},
-  {url:'https://ntfy.envs.net', label:'envs.net',        flag:'🇩🇪'},
-  {url:'https://ntfy.hostux.net',label:'hostux.net',     flag:'🇫🇷'},
-  {url:'https://ntfy.mzte.de',  label:'mzte.de',         flag:'🇩🇪'},
-  {url:'https://ntfy.tedomum.fr',label:'tedomum.fr',     flag:'🇫🇷'},
+  {url:'https://ntfy.sh',       label:'ntfy.sh',         flag:'🇺🇸', icon:'🗽'},
+  {url:'https://ntfy.adminforge.de', label:'adminforge.de', flag:'🇩🇪', icon:'⚙️'},
+  {url:'https://ntfy.envs.net', label:'envs.net',        flag:'🇩🇪', icon:'🌿'},
+  {url:'https://ntfy.hostux.net',label:'hostux.net',     flag:'🇫🇷', icon:'🧭'},
+  {url:'https://ntfy.mzte.de',  label:'mzte.de',         flag:'🇩🇪', icon:'🚀'},
+  {url:'https://ntfy.tedomum.fr',label:'tedomum.fr',     flag:'🇫🇷', icon:'🍷'},
 ];
-let NTFY='https://ntfy.sh'; // будет выбран автоматически или вручную
+let NTFY='https://ntfy.sh'; // выбирается пользователем и запоминается
 const MAX_RETRY_LOGIN=10, MAX_RETRY_SEND=20, POLL_MS=2500;
 const PING_REFRESH_MS=30000;
 const SAFETY_PULL_MS=12000;
@@ -495,6 +506,12 @@ function resolveMsgAvatar(nick,avRaw){
 
 /* ══ STATE ══ */
 let S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,safetyTimer:null,known:new Set(),knownFallback:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
+function getSavedServer(){try{return localStorage.getItem('pc_server')||''}catch{return''}}
+function setSavedServer(url){try{localStorage.setItem('pc_server',url)}catch{}}
+{
+  const saved=getSavedServer();
+  if(saved&&NTFY_SERVERS.some(s=>s.url===saved))NTFY=saved;
+}
 
 /* ══ STORAGE ══ */
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch{return[]}};
@@ -766,7 +783,6 @@ async function doLogin(){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* ══ SERVER PICKER ══ */
-let _srvManual=null; // null = авто, иначе url выбранного вручную
 const _pingCache=new Map();
 let _pingRefreshTimer=null;
 
@@ -796,6 +812,20 @@ function pingLabel(ms){
   if(ms===null)return'недоступен';
   return ms+'мс';
 }
+function pingLevel(ms){
+  if(ms===null)return 0;
+  if(ms<150)return 4;
+  if(ms<280)return 3;
+  if(ms<450)return 2;
+  return 1;
+}
+function updateIslandSignal(ms){
+  const el=$('islandSignal');
+  if(!el)return;
+  const lvl=pingLevel(ms);
+  el.className='island-signal '+(lvl===0?'off':'l'+lvl);
+  el.title='Сигнал сервера: '+(ms==null?'нет ответа':ms+'мс');
+}
 
 function renderSrvList(){
   renderSrvListInto('srvList','login');
@@ -809,31 +839,53 @@ function renderSrvListInto(listId,suffix){
     const row=mk('div','srv-row');
     if(NTFY===srv.url)row.classList.add('selected');
     const flag=mk('span','srv-flag');flag.textContent=srv.flag;
+    const icon=mk('span','srv-icon');icon.textContent=srv.icon||'🌐';
     const lbl=mk('span','srv-label');lbl.textContent=srv.label;
     const ping=mk('span','srv-ping');
     const cached=_pingCache.get(srv.url);
-    if(cached==null){ping.textContent='…';ping.className='srv-ping measuring'}
-    else{ping.textContent=pingLabel(cached);ping.className='srv-ping '+pingClass(cached)}
+    if(cached==null){
+      ping.textContent='…';ping.className='srv-ping measuring';
+    }else{
+      const pclass=pingClass(cached);
+      ping.textContent=pingLabel(cached);ping.className='srv-ping '+pclass;
+    }
     ping.id=`ping-${suffix}-`+srv.url.replace(/[^a-z0-9]/gi,'_');
     const chk=mk('span','srv-check');chk.textContent='✓';
-    if(_srvManual===null&&NTFY===srv.url){
-      const b=mk('span','srv-auto-badge');b.textContent='авто';
-      row.append(flag,lbl,b,ping,chk);
-    }else{
-      row.append(flag,lbl,ping,chk);
-    }
-    row.addEventListener('click',async()=>{
-      _srvManual=srv.url;
-      NTFY=srv.url;
-      updateSrvSelectedInfo();
-      renderSrvList();
-      if(S.topic){
-        await pollPresence();
-        await forceRefresh();
-      }
-    });
+    row.append(flag,icon,lbl,ping,chk);
+    row.addEventListener('click',async()=>{await switchServer(srv.url,true)});
     list.appendChild(row);
   });
+}
+
+async function switchServer(url,manual){
+  const prev=NTFY;
+  if(manual)setSavedServer(url);
+  NTFY=url;
+  updateSrvSelectedInfo();
+  renderSrvList();
+  if(!S.topic||prev===url)return;
+
+  if(S.timer)clearInterval(S.timer);
+  if(S.safetyTimer)clearInterval(S.safetyTimer);
+  showLoad('Переключаем сервер…');
+  setStatus('warn','переключение…');
+  try{
+    // Чистим онлайн-статус от прошлого сервера и ставим себя как online
+    S.presence=new Map();
+    S.presence.set(S.nick,{ts:Date.now()});
+    updateIsland();
+    await sendPresence();
+    await loadHistory();
+    await pollPresence();
+    updateIsland();
+    setStatus('on','в эфире');
+  }catch(_){
+    setStatus('warn','нет связи…');
+  }finally{
+    hideLoad();
+    startPoll();
+    startSafetyPull();
+  }
 }
 
 function updateSrvSelectedInfo(){
@@ -844,8 +896,9 @@ function updateSrvSelectedInfo(){
     return;
   }
   const ms=_pingCache.get(NTFY);
-  const manual=_srvManual!==null;
-  const text=(manual?'🔧 Вручную: ':'⚡ Авто: ')+'<b>'+srv.flag+' '+srv.label+'</b>'+(ms!=null?' · '+ms+'мс':'');
+  $('islandSrvBtn').textContent=srv.icon||'🛰️';
+  updateIslandSignal(ms==null?null:ms);
+  const text='Сервер: <b>'+srv.flag+' '+(srv.icon||'🌐')+' '+srv.label+'</b>'+(ms!=null?' · '+ms+'мс':'');
   $('srvSelectedInfo').innerHTML=text;
   $('islandSrvSelectedInfo').innerHTML=text;
 }
@@ -859,22 +912,13 @@ async function measurePingsAndUpdate(){
     const key=srv.url.replace(/[^a-z0-9]/gi,'_');
     const loginEl=document.getElementById('ping-login-'+key);
     const islandEl=document.getElementById('ping-island-'+key);
-    if(loginEl){loginEl.textContent=pingLabel(ms);loginEl.className='srv-ping '+pingClass(ms)}
-    if(islandEl){islandEl.textContent=pingLabel(ms);islandEl.className='srv-ping '+pingClass(ms)}
+    const pclass=pingClass(ms);
+    if(loginEl){loginEl.textContent=pingLabel(ms);loginEl.className='srv-ping '+pclass}
+    if(islandEl){islandEl.textContent=pingLabel(ms);islandEl.className='srv-ping '+pclass}
     return{srv,ms};
   });
 
-  Promise.all(promises).then(results=>{
-    if(_srvManual!==null)return;
-    const best=results
-      .filter(r=>r.ms!==null)
-      .sort((a,b)=>a.ms-b.ms)[0];
-    if(best){
-      NTFY=best.srv.url;
-      updateSrvSelectedInfo();
-      renderSrvList();
-    }
-  });
+  Promise.all(promises).then(()=>{updateSrvSelectedInfo();});
 }
 
 // Инициализация пикера
