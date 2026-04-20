@@ -593,7 +593,7 @@ async function doLogin(){
   $('err').textContent='';
   if(!nick){$('err').textContent='Введите никнейм';return}
   if(!pass){$('err').textContent='Введите пароль норы';return}
-  if(nick.length>25){$('err').textContent='Ник слишком длинный (макс. 25)';return}
+  if(nick.length>25){$('err').textContent='У нас лимит на символы, а не на амбиции. Ты случайно не Бенедикт Камбербэтч? Хотя даже он покороче будет. Мы тут чат делаем, а не надпись на надгробии.';return}
   $('loginBtn').disabled=true;
 
   showLoad('Генерация ключа…');
