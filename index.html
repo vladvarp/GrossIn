@@ -161,6 +161,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mquote{border-left:3px solid var(--accent);padding:6px 10px 6px 10px;margin:-4px -6px 8px -4px;border-radius:10px;background:rgba(0,0,0,.22);font-size:12px;line-height:1.4}
 .mq-n{font-weight:600;font-size:11px;margin-bottom:3px;color:var(--text2)}
 .mq-t{color:var(--text3);white-space:pre-wrap;word-break:break-word;max-height:4.2em;overflow:hidden}
+.mq-thumb{max-width:50px;max-height:50px;border-radius:4px;display:block;border:1px solid var(--border)}
 .mbody{word-break:break-word}
 .photocap{font-size:13px;padding:4px 6px 2px;color:var(--text2)}
 .photo-up-foot{margin-top:8px;max-width:220px;display:flex;flex-direction:column;gap:6px;align-items:stretch}
@@ -644,16 +645,25 @@ function truncateQ(s){const t=String(s||'').trim();return t.length>Q_MAX?t.slice
 let replyDraft=null;
 function setReplyDraft(v){
   replyDraft=v;
-  const bar=$('replyBar');
+  const bar=$('replyBar'),sn=$('replyBarSnippet');
   if(!v){bar.classList.remove('show');return}
   bar.classList.add('show');$('replyBarTitle').textContent='Ответ «'+v.n+'»';
-  $('replyBarSnippet').textContent=truncateQ(v.t);
+  const txt=String(v.t||'');
+  if(txt.startsWith('http://')||txt.startsWith('https://')||txt.startsWith('blob:')||txt.startsWith('data:')){
+    sn.innerHTML='';sn.style.background='none';sn.style.padding='2px';
+    const thumb=mk('img','reply-bar-thumb');thumb.src=txt;thumb.alt='фото';sn.appendChild(thumb);
+  }else{
+    sn.innerHTML='';sn.style.background='';sn.style.padding='';sn.textContent=truncateQ(v.t);
+  }
 }
 function snippetFromBubble(row){
   const bub=row.querySelector('.mbubble');if(!bub)return'';
   if(bub.classList.contains('photobub')){
-    const cap=bub.querySelector('.photocap');
-    return (cap&&cap.textContent.trim())||'[фото]';
+    const img=bub.querySelector('img');if(!img)return'[фото]';
+    let src=img.src;
+    const full=bub.dataset.fullPhoto;
+    if(full)src=full;
+    return chatPhotoThumbUrl(src);
   }
   const body=bub.querySelector('.mbody');
   return truncateQ((body||bub).textContent||'');
@@ -1164,7 +1174,15 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote,localPre
   if(quote&&quote.n){
     const mq=mk('div','mquote');
     const mn=mk('div','mq-n');mn.style.color=strColor(quote.n);mn.textContent=quote.n;
-    const mt=mk('div','mq-t');mt.textContent=truncateQ(quote.t);
+    const mt=mk('div','mq-t');
+    const qtxt=String(quote.t||'');
+    if(qtxt.startsWith('http://')||qtxt.startsWith('https://')||qtxt.startsWith('blob:')||qtxt.startsWith('data:')){
+      mt.style.padding='2px';
+      const thumb=mk('img','mq-thumb');thumb.src=qtxt;thumb.alt='фото';
+      mt.appendChild(thumb);
+    }else{
+      mt.textContent=truncateQ(qtxt);
+    }
     mq.append(mn,mt);bub.appendChild(mq);
   }
   if(photo||localPreview){
