@@ -133,9 +133,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .photobub img{max-width:220px;max-height:260px;border-radius:12px;display:block;cursor:pointer;border:1px solid var(--border)}
 .mrow.pending .mbubble{opacity:.55}
 .mrow.failed .mbubble{border-color:rgba(240,107,107,.4);background:rgba(240,107,107,.08)}
-.mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 12px;display:flex;align-items:center;gap:4px}
-.mrow.own .mtime{justify-content:flex-end}
+.mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 8px 0 12px;display:flex;align-items:center;gap:4px}
+.mrow.own .mtime{justify-content:flex-end;padding:0 12px 0 8px}
 .mtime .mstatus{font-size:10px}
+.qbtn{width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;opacity:.55;transition:opacity .15s,background .15s,color .15s,border-color .15s}
+.mrow:hover .qbtn{opacity:1}
+.qbtn:hover{background:var(--bg4);color:var(--accent2);border-color:var(--border2)}
+.qbtn svg{width:13px;height:13px}
+.mquote{border-left:3px solid var(--accent);padding:6px 10px 6px 10px;margin:-4px -6px 8px -4px;border-radius:10px;background:rgba(0,0,0,.22);font-size:12px;line-height:1.4}
+.mq-n{font-weight:600;font-size:11px;margin-bottom:3px;color:var(--text2)}
+.mq-t{color:var(--text3);white-space:pre-wrap;word-break:break-word;max-height:4.2em;overflow:hidden}
+.mbody{word-break:break-word}
+.photocap{font-size:13px;padding:4px 6px 2px;color:var(--text2)}
+.reply-bar{display:none;align-items:flex-start;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.45}
+.reply-bar.show{display:flex}
+.reply-bar-inner{flex:1;min-width:0;border-left:3px solid var(--accent);padding-left:10px}
+.reply-bar-title{font-weight:600;color:var(--accent2);font-size:11px;margin-bottom:2px}
+.reply-bar-snippet{color:var(--text2);max-height:3.6em;overflow:hidden;white-space:pre-wrap;word-break:break-word}
+.reply-bar-x{width:28px;height:28px;border:none;border-radius:8px;background:transparent;color:var(--text3);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0}
+.reply-bar-x:hover{color:var(--text);background:var(--bg4)}
 .mtime .mstatus.sending{color:var(--text3)}
 .mtime .mstatus.fail{color:var(--red)}
 .mtime .mstatus.ok{color:var(--green)}
@@ -311,6 +327,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="msgs"></div>
 
   <div class="ftr">
+    <div id="replyBar" class="reply-bar">
+      <div class="reply-bar-inner">
+        <div class="reply-bar-title" id="replyBarTitle"></div>
+        <div class="reply-bar-snippet" id="replyBarSnippet"></div>
+      </div>
+      <button type="button" class="reply-bar-x" id="replyBarClose" title="Отменить цитату" aria-label="Отменить цитату">×</button>
+    </div>
     <div id="emojiPicker">
       <div class="tabs">
         <button class="tab" data-cat="rec" style="display:none">🕐</button>
@@ -447,6 +470,53 @@ function initSec(h,b,k){
 const $=id=>document.getElementById(id);
 const mk=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
 const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ══ SUBTLE SOUNDS (Web Audio, без файлов) ══ */
+let _actx=null;
+function audioCtx(){if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)();return _actx}
+function playChime({freq,dur=.075,vol=.042,type='sine'}){
+  try{
+    const ctx=audioCtx();
+    if(ctx.state==='suspended')ctx.resume();
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type=type;o.frequency.setValueAtTime(freq,ctx.currentTime);
+    g.gain.setValueAtTime(0,ctx.currentTime);
+    g.gain.linearRampToValueAtTime(vol,ctx.currentTime+0.01);
+    g.gain.linearRampToValueAtTime(0,ctx.currentTime+dur);
+    o.connect(g);g.connect(ctx.destination);
+    o.start();o.stop(ctx.currentTime+dur+0.03);
+  }catch(_){}
+}
+function soundSent(){playChime({freq:880,vol:.032,dur:.05});setTimeout(()=>playChime({freq:1120,vol:.02,dur:.04}),42)}
+function soundIn(){playChime({freq:440,vol:.048,dur:.085});setTimeout(()=>playChime({freq:580,vol:.028,dur:.075}),72)}
+
+const Q_MAX=360;
+function truncateQ(s){const t=String(s||'').trim();return t.length>Q_MAX?t.slice(0,Q_MAX-1)+'…':t}
+let replyDraft=null;
+function setReplyDraft(v){
+  replyDraft=v;
+  const bar=$('replyBar');
+  if(!v){bar.classList.remove('show');return}
+  bar.classList.add('show');$('replyBarTitle').textContent='Ответ «'+v.n+'»';
+  $('replyBarSnippet').textContent=truncateQ(v.t);
+}
+function snippetFromBubble(row){
+  const bub=row.querySelector('.mbubble');if(!bub)return'';
+  if(bub.classList.contains('photobub')){
+    const cap=bub.querySelector('.photocap');
+    return (cap&&cap.textContent.trim())||'[фото]';
+  }
+  const body=bub.querySelector('.mbody');
+  return truncateQ((body||bub).textContent||'');
+}
+function quoteFromRow(row){
+  const own=row.classList.contains('own');
+  const nick=own?S.nick:(row.querySelector('.msender')?.textContent||'?').trim();
+  const t=snippetFromBubble(row);
+  if(!t)return;
+  setReplyDraft({n:nick||'?',t});
+  $('minput').focus();
+}
 
 function dialog(title,msg,btns,cb){
   $('dialogTitle').textContent=title;$('dialogMsg').textContent=msg;
@@ -662,9 +732,12 @@ function appendMsg(ev,animate){
   const mid=eventMsgId(ev);
   if(mid&&S.known.has(mid))return;
   if(mid)S.known.add(mid);
-  let nick='?',text='',photo='',av='';
-  try{const d=JSON.parse(ev.message||'{}');nick=d.n||'?';text=d.t||ev.message;photo=d.photo||'';av=d.av||''}
-  catch(_){text=ev.message||''}
+  let nick='?',text='',photo='',av='',quote=null;
+  try{
+    const d=JSON.parse(ev.message||'{}');
+    nick=d.n||'?';text=d.t||ev.message;photo=d.photo||'';av=d.av||'';
+    if(d.q&&d.q.n!=null)quote={n:String(d.q.n),t:String(d.q.t||'')};
+  }catch(_){text=ev.message||''}
 
   // Только живые сообщения с эфира — не из истории при входе
   if(animate&&nick!=='?'&&nick!==S.nick){
@@ -679,25 +752,32 @@ function appendMsg(ev,animate){
     }
   }
 
-  // Resolve pending
-  const pend=photo
-    ?document.querySelector('.pending [data-ppid="'+CSS.escape(photo.slice(-20))+'"]')
-    :Array.from(document.querySelectorAll('.pending .mbubble')).find(e=>e.textContent===text&&!e.classList.contains('photobub'));
-  if(pend){
-    const row=pend.closest('.mrow');row.dataset.msgId=mid||ev.id;row.removeAttribute('data-pending-id');
-    row.classList.remove('pending');
-    const st=row.querySelector('.mstatus');if(st){st.className='mstatus ok';st.textContent='✓'}
+  // Resolve pending (текст сравниваем по data-send-text — в пузыре может быть цитата)
+  let pendRow=null;
+  if(photo){
+    const el=document.querySelector('.pending [data-ppid="'+CSS.escape(photo.slice(-20))+'"]');
+    if(el)pendRow=el.closest('.mrow');
+  }else{
+    for(const row of document.querySelectorAll('.mrow.pending')){if(row.dataset.sendText===text){pendRow=row;break}}
+  }
+  if(pendRow){
+    pendRow.dataset.msgId=mid||ev.id;pendRow.removeAttribute('data-pending-id');
+    pendRow.classList.remove('pending');
+    const st=pendRow.querySelector('.mstatus');if(st){st.className='mstatus ok';st.textContent='✓'}
     return;
   }
-  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:mid||ev.id,av});
+  if(animate&&nick!=='?'&&nick!==S.nick)soundIn();
+  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:mid||ev.id,av,quote});
 }
 
-function buildMsg({nick,text,photo,ts,state,animate,id,pending,av}){
+function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote}){
   const own=nick===S.nick,color=strColor(nick),animal=resolveMsgAvatar(nick,av);
   const row=mk('div','mrow '+(own?'own':'other')+(state==='pending'?' pending':state==='failed'?' failed':''));
   if(!animate)row.style.animation='none';
   if(id)row.dataset.msgId=id;
   if(pending)row.dataset.pendingId=pending;
+  if(pending&&text&&!photo)row.dataset.sendText=text;
+  if(pending&&quote)try{row.dataset.quoteJson=JSON.stringify(quote)}catch(_){}
 
   if(!own){
     const av=mk('div','mav');av.style.background=color+'20';av.style.border='1.5px solid '+color+'55';av.textContent=animal;row.appendChild(av);
@@ -706,18 +786,30 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av}){
   if(!own){const snd=mk('div','msender');snd.style.color=color;snd.textContent=nick;wrap.appendChild(snd)}
 
   const bub=mk('div','mbubble');
+  if(quote&&quote.n){
+    const mq=mk('div','mquote');
+    const mn=mk('div','mq-n');mn.style.color=strColor(quote.n);mn.textContent=quote.n;
+    const mt=mk('div','mq-t');mt.textContent=truncateQ(quote.t);
+    mq.append(mn,mt);bub.appendChild(mq);
+  }
   if(photo){
     bub.classList.add('photobub');
     const ppid=photo.slice(-20);bub.dataset.ppid=ppid;
     const img=mk('img');img.src=photo;img.alt='фото';img.onclick=()=>openLB(photo);bub.appendChild(img);
-    if(text){const cap=mk('div');cap.style.cssText='font-size:13px;padding:4px 6px 2px;color:var(--text2)';cap.textContent=text;bub.appendChild(cap)}
+    if(text){const cap=mk('div','photocap');cap.textContent=text;bub.appendChild(cap)}
   }else{
+    const body=mk('div','mbody');
     if(isSingleEmoji(text))bub.classList.add('sticker');
-    bub.textContent=text;
+    body.textContent=text;bub.appendChild(body);
   }
   wrap.appendChild(bub);
 
-  const tm=mk('div','mtime');tm.textContent=fmtTime(ts||Date.now());
+  const tm=mk('div','mtime');
+  const qb=mk('button','qbtn');qb.type='button';qb.title='Цитировать';
+  qb.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>';
+  qb.addEventListener('click',e=>{e.stopPropagation();quoteFromRow(row)});
+  tm.appendChild(qb);
+  const tms=mk('span');tms.style.flex='1';tms.style.minWidth='0';tms.textContent=fmtTime(ts||Date.now());tm.appendChild(tms);
   if(own){
     const st=mk('span','mstatus '+(state==='pending'?'sending':state==='failed'?'fail':'ok'));
     st.textContent=state==='pending'?'отправка…':state==='failed'?'ошибка':'✓';tm.appendChild(st);
@@ -805,10 +897,11 @@ async function poll(){
 let pendSeq=0;
 async function sendMsg(){
   const inp=$('minput'),text=inp.value.trim();if(!text)return;
+  const q=replyDraft;setReplyDraft(null);
   inp.value='';autoResize();$('sendBtn').disabled=true;
   const pid='p'+(++pendSeq);
-  buildMsg({nick:S.nick,text,ts:Date.now(),state:'pending',animate:true,pending:pid,av:getEffectiveAvatar(S.nick)});
-  scrollBot();S.queue.push({pid,text,attempts:0});flushQ();
+  buildMsg({nick:S.nick,text,ts:Date.now(),state:'pending',animate:true,pending:pid,av:getEffectiveAvatar(S.nick),quote:q});
+  scrollBot();S.queue.push({pid,text,attempts:0,quote:q||undefined});flushQ();
   $('sendBtn').disabled=false;inp.focus();
 }
 
@@ -828,9 +921,13 @@ async function trySend(item){
     const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
     let res;try{
       const avj=getEffectiveAvatar(S.nick);
-      const body=item.photo?JSON.stringify({n:S.nick,t:item.text||'',photo:item.photo,av:avj}):JSON.stringify({n:S.nick,t:item.text,av:avj});
+      const qpack=item.quote&&item.quote.n?{q:{n:item.quote.n,t:truncateQ(item.quote.t)}}:{};
+      const body=item.photo
+        ?JSON.stringify({n:S.nick,t:item.text||'',photo:item.photo,av:avj,...qpack})
+        :JSON.stringify({n:S.nick,t:item.text,av:avj,...qpack});
       res=await fetch(`${NTFY}/${S.topic}`,{method:'POST',body,signal:ctrl.signal});
     }finally{clearTimeout(tid)}
+    if(res.ok)soundSent();
     return res.ok;
   }catch(_){return false}
 }
@@ -844,11 +941,12 @@ function setPendSt(pid,state){
 }
 function retryP(pid){
   const el=document.querySelector(`[data-pending-id="${pid}"]`);if(!el)return;
-  const text=el.querySelector('.mbubble').textContent;
+  const text=el.dataset.sendText||el.querySelector('.mbody')?.textContent||el.querySelector('.mbubble')?.textContent||'';
+  let quote;try{quote=el.dataset.quoteJson?JSON.parse(el.dataset.quoteJson):undefined}catch(_){}
   el.classList.remove('failed');el.classList.add('pending');
   const st=el.querySelector('.mstatus');if(st){st.className='mstatus sending';st.textContent='отправка…'}
   const rb=el.querySelector('.retry-btn');if(rb)rb.remove();
-  S.queue.push({pid,text,attempts:0});flushQ();
+  S.queue.push({pid,text,attempts:0,quote});flushQ();
 }
 
 /* ══ AVATAR PICKER ══ */
@@ -903,11 +1001,14 @@ $('copyBtn').addEventListener('click',async()=>{
   try{await navigator.clipboard.writeText(S.pass)}catch(_){}
   const b=$('copyBtn');b.style.color='var(--green)';setTimeout(()=>b.style.color='',1800);
 });
+$('replyBarClose').addEventListener('click',()=>setReplyDraft(null));
+
 $('logoutBtn').addEventListener('click',()=>{
   confirmD('Выход','Выйти из норы?','Выйти',idx=>{
     if(idx!==1)return;
     const ptopic=S.ptopic,nick=S.nick;
     setLoggedOut(true);
+    setReplyDraft(null);
     (async()=>{
       if(ptopic&&nick){
         try{await fetch(`${NTFY}/${ptopic}`,{method:'POST',body:JSON.stringify({type:'presence',n:nick,leave:true,ts:Date.now()}),headers:{'X-Priority':'min','X-TTL':'120'}})}catch(_){}
