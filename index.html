@@ -333,7 +333,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <!-- LOGIN -->
 <div id="login">
-  <div class="logo">
+  <div class="logo" style="position:relative">
+    <button type="button" id="howItWorksBtn" style="position:absolute;top:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">?</button>
+    <div id="howItWorksPop" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;font-size:12px;line-height:1.5;color:var(--text2);width:min(280px,calc(100vw - 24px));z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.35)"><b style="color:var(--accent2)">Как работает:</b> пароль хешируется в уникальный ID канала. Попасть в нору могут только те крысы, кто знает тот же пароль. Регистрации нет. История 24 ч.</div>
     <div class="logo-ring"><span style="font-size:26px">🐀</span></div>
     <h1>ChrisoChat</h1>
     <p>Крысиный мессенджер · без СМС и регистраций</p>
@@ -359,7 +361,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="sec-hdr" id="roomSecHdr" style="margin-top:7px"><span>▶</span><span>Норы</span><span class="arrow">›</span></div>
       <div class="sec-body" id="roomSecBody"><div class="chips" id="roomChips" style="margin-top:6px"></div></div>
     </div>
-    <div class="hint"><b>Как работает:</b> пароль хешируется в уникальный ID канала. Попасть в нору могут только те крысы, кто знает тот же пароль. Регистрации нет. История 24 ч.</div>
     <div id="serverPickerWrap">
       <div class="srv-hdr" id="srvHdr">
         <div class="srv-hdr-left">🌐 <span>Сервер</span></div>
