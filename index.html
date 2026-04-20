@@ -629,6 +629,9 @@ async function doLogin(){
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
+/** Один id в одном виде (строка), иначе history и poll считают разными ключами — дубли в DOM */
+function eventMsgId(ev){if(!ev||ev.id==null||ev.id==='')return'';return String(ev.id)}
+
 /* ══ HISTORY ══ */
 async function loadHistory(){
   S.known=new Set();
@@ -637,7 +640,7 @@ async function loadHistory(){
   if(!res.ok)throw new Error('HTTP '+res.status);
   const txt=await res.text();$('msgs').innerHTML='';let maxT=0;
   for(const line of txt.trim().split('\n').filter(Boolean)){
-    try{const ev=JSON.parse(line);if(ev.event!=='message')continue;if(ev.time>maxT)maxT=ev.time;appendMsg(ev,false);S.known.add(ev.id)}catch(_){}
+    try{const ev=JSON.parse(line);if(ev.event!=='message')continue;if(ev.time>maxT)maxT=ev.time;appendMsg(ev,false)}catch(_){}
   }
   if(!S.known.size){const e=mk('div','sysmsg');e.textContent='Нора пуста. Поделитесь паролем — и крысы окажутся здесь.';$('msgs').appendChild(e)}
   S.since=maxT||Math.floor(Date.now()/1000);scrollBot();
@@ -656,7 +659,9 @@ function isSingleEmoji(s){
 
 /* ══ RENDER MSG ══ */
 function appendMsg(ev,animate){
-  if(S.known.has(ev.id))return;S.known.add(ev.id);
+  const mid=eventMsgId(ev);
+  if(mid&&S.known.has(mid))return;
+  if(mid)S.known.add(mid);
   let nick='?',text='',photo='',av='';
   try{const d=JSON.parse(ev.message||'{}');nick=d.n||'?';text=d.t||ev.message;photo=d.photo||'';av=d.av||''}
   catch(_){text=ev.message||''}
@@ -679,12 +684,12 @@ function appendMsg(ev,animate){
     ?document.querySelector('.pending [data-ppid="'+CSS.escape(photo.slice(-20))+'"]')
     :Array.from(document.querySelectorAll('.pending .mbubble')).find(e=>e.textContent===text&&!e.classList.contains('photobub'));
   if(pend){
-    const row=pend.closest('.mrow');row.dataset.msgId=ev.id;row.removeAttribute('data-pending-id');
+    const row=pend.closest('.mrow');row.dataset.msgId=mid||ev.id;row.removeAttribute('data-pending-id');
     row.classList.remove('pending');
     const st=row.querySelector('.mstatus');if(st){st.className='mstatus ok';st.textContent='✓'}
     return;
   }
-  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:ev.id,av});
+  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:mid||ev.id,av});
 }
 
 function buildMsg({nick,text,photo,ts,state,animate,id,pending,av}){
@@ -734,6 +739,7 @@ async function forceRefresh(){
     alertD('Подождите','Сначала дождитесь отправки сообщений.','ОК',()=>{});
     return;
   }
+  if(S.timer)clearInterval(S.timer);
   showLoad('Обновление…');
   try{
     await loadHistory();
@@ -742,6 +748,7 @@ async function forceRefresh(){
     updateIsland();
     setStatus('on','в эфире');
   }catch(_){setStatus('warn','нет связи…')}
+  finally{if(S.topic)startPoll()}
   hideLoad();
 }
 
@@ -788,7 +795,7 @@ async function poll(){
     const txt=await res.text();const m=$('msgs');const atBot=m.scrollHeight-m.scrollTop-m.clientHeight<80;
     let got=false,maxT=S.since;
     for(const line of txt.trim().split('\n').filter(Boolean)){
-      try{const ev=JSON.parse(line);if(ev.event!=='message'||S.known.has(ev.id))continue;appendMsg(ev,true);if(ev.time>maxT)maxT=ev.time;got=true}catch(_){}
+      try{const ev=JSON.parse(line);if(ev.event!=='message'||S.known.has(eventMsgId(ev)))continue;appendMsg(ev,true);if(ev.time>maxT)maxT=ev.time;got=true}catch(_){}
     }
     if(maxT>S.since)S.since=maxT;if(got&&atBot)scrollBot();setStatus('on','в эфире');flushQ();
   }catch(e){setStatus('warn','нет связи…')}
