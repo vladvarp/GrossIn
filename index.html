@@ -225,6 +225,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes msgIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @media(max-width:600px){.ftr{padding:8px 10px 12px}#msgs{padding:10px 12px}.hdr{padding:8px 12px 10px}.island-wrap{padding:6px 12px 0}.mrow{max-width:88%}#emojiPicker{left:8px;width:calc(100vw - 16px)}#emojiPicker .em-grid{grid-template-columns:repeat(7,1fr)}}
+
+/* ══ SERVER PICKER ══ */
+#serverPickerWrap{margin-top:2px}
+.srv-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:6px 0 2px}
+.srv-hdr-left{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--text2);text-transform:uppercase;letter-spacing:.7px}
+.srv-hdr-arrow{font-size:10px;color:var(--text3);transition:transform .2s}
+.srv-hdr.open .srv-hdr-arrow{transform:rotate(90deg)}
+.srv-body{overflow:hidden;max-height:0;transition:max-height .3s ease}
+.srv-body.open{max-height:340px}
+.srv-list{display:flex;flex-direction:column;gap:4px;padding:4px 0 6px}
+.srv-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;transition:background .15s,border-color .15s}
+.srv-row:hover{background:var(--bg4);border-color:var(--border2)}
+.srv-row.selected{border-color:var(--accent);background:var(--adim)}
+.srv-row.selected .srv-check{display:flex}
+.srv-flag{font-size:16px;flex-shrink:0;line-height:1}
+.srv-label{flex:1;font-size:13px;font-weight:500;color:var(--text)}
+.srv-ping{font-size:11px;font-weight:600;min-width:52px;text-align:right;flex-shrink:0}
+.srv-ping.good{color:var(--green)}
+.srv-ping.ok{color:var(--amber)}
+.srv-ping.bad{color:var(--red)}
+.srv-ping.measuring{color:var(--text3);font-weight:400}
+.srv-ping.fail{color:var(--red);opacity:.6}
+.srv-check{width:14px;height:14px;border-radius:50%;background:var(--accent);display:none;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;color:#fff}
+.srv-auto-badge{font-size:10px;color:var(--accent2);background:var(--adim);border:1px solid rgba(124,106,247,.3);border-radius:20px;padding:1px 7px;flex-shrink:0}
+#srvSelectedInfo{font-size:12px;color:var(--text3);margin-top:3px;min-height:16px}
+#srvSelectedInfo b{color:var(--text2)}
 </style>
 </head>
 <body>
@@ -294,6 +320,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="sec-body" id="roomSecBody"><div class="chips" id="roomChips" style="margin-top:6px"></div></div>
     </div>
     <div class="hint"><b>Как работает:</b> пароль хешируется в уникальный ID канала. Попасть в нору могут только те крысы, кто знает тот же пароль. Регистрации нет. История 24 ч.</div>
+    <div id="serverPickerWrap">
+      <div class="srv-hdr" id="srvHdr">
+        <div class="srv-hdr-left">🌐 <span>Сервер</span></div>
+        <span class="srv-hdr-arrow">›</span>
+      </div>
+      <div id="srvSelectedInfo">выбирается автоматически…</div>
+      <div class="srv-body" id="srvBody">
+        <div class="srv-list" id="srvList"></div>
+      </div>
+    </div>
     <div id="err"></div>
     <button id="loginBtn">Войти в нору</button>
   </div>
@@ -360,7 +396,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 /* ══ CONFIG ══ */
-const NTFY='https://ntfy.sh';
+const NTFY_SERVERS=[
+  {url:'https://ntfy.sh',       label:'ntfy.sh',         flag:'🇺🇸'},
+  {url:'https://ntfy.adminforge.de', label:'adminforge.de', flag:'🇩🇪'},
+  {url:'https://ntfy.envs.net', label:'envs.net',        flag:'🇩🇪'},
+  {url:'https://ntfy.hostux.net',label:'hostux.net',     flag:'🇫🇷'},
+  {url:'https://ntfy.mzte.de',  label:'mzte.de',         flag:'🇩🇪'},
+  {url:'https://ntfy.tedomum.fr',label:'tedomum.fr',     flag:'🇫🇷'},
+];
+let NTFY='https://ntfy.sh'; // будет выбран автоматически или вручную
 const MAX_RETRY_LOGIN=10, MAX_RETRY_SEND=20, POLL_MS=2500;
 const PRESENCE_TTL=30000; // online if heartbeat within 15s
 const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории ntfy запрашивать (шире TTL — чтобы не терять события на границе)
@@ -699,6 +743,115 @@ async function doLogin(){
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
+/* ══ SERVER PICKER ══ */
+let _srvManual=null; // null = авто, иначе url выбранного вручную
+const _pingCache=new Map();
+
+async function pingServer(url){
+  if(_pingCache.has(url))return _pingCache.get(url);
+  const t=Date.now();
+  try{
+    const ctrl=new AbortController();
+    const tid=setTimeout(()=>ctrl.abort(),4000);
+    await fetch(`${url}/v1/health`,{method:'GET',signal:ctrl.signal,cache:'no-store'});
+    clearTimeout(tid);
+    const ms=Date.now()-t;
+    _pingCache.set(url,ms);
+    return ms;
+  }catch(_){
+    _pingCache.set(url,null);
+    return null;
+  }
+}
+
+function pingClass(ms){
+  if(ms===null)return'fail';
+  if(ms<150)return'good';
+  if(ms<400)return'ok';
+  return'bad';
+}
+function pingLabel(ms){
+  if(ms===null)return'недоступен';
+  return ms+'мс';
+}
+
+function renderSrvList(){
+  const list=$('srvList');if(!list)return;
+  list.innerHTML='';
+  NTFY_SERVERS.forEach(srv=>{
+    const row=mk('div','srv-row');
+    if(NTFY===srv.url)row.classList.add('selected');
+    const flag=mk('span','srv-flag');flag.textContent=srv.flag;
+    const lbl=mk('span','srv-label');lbl.textContent=srv.label;
+    const ping=mk('span','srv-ping measuring');ping.textContent='…';ping.id='ping-'+srv.url.replace(/[^a-z0-9]/gi,'_');
+    const chk=mk('span','srv-check');chk.textContent='✓';
+    // auto badge
+    if(_srvManual===null&&NTFY===srv.url){
+      const b=mk('span','srv-auto-badge');b.textContent='авто';row.appendChild(flag);row.appendChild(lbl);row.appendChild(b);row.appendChild(ping);row.appendChild(chk);
+    }else{
+      row.appendChild(flag);row.appendChild(lbl);row.appendChild(ping);row.appendChild(chk);
+    }
+    row.addEventListener('click',()=>{
+      _srvManual=srv.url;
+      NTFY=srv.url;
+      updateSrvSelectedInfo();
+      renderSrvList();
+    });
+    list.appendChild(row);
+  });
+}
+
+function updateSrvSelectedInfo(){
+  const el=$('srvSelectedInfo');if(!el)return;
+  const srv=NTFY_SERVERS.find(s=>s.url===NTFY);
+  if(!srv){el.textContent='';return}
+  const ms=_pingCache.get(NTFY);
+  const manual=_srvManual!==null;
+  el.innerHTML=(manual?'🔧 Вручную: ':'⚡ Авто: ')+'<b>'+srv.flag+' '+srv.label+'</b>'+(ms!=null?' · '+ms+'мс':'');
+}
+
+async function measurePingsAndUpdate(){
+  // Запускаем все пинги параллельно, обновляем UI по мере прихода результатов
+  const promises=NTFY_SERVERS.map(async srv=>{
+    const el=document.getElementById('ping-'+srv.url.replace(/[^a-z0-9]/gi,'_'));
+    const ms=await pingServer(srv.url);
+    if(el){el.textContent=pingLabel(ms);el.className='srv-ping '+pingClass(ms)}
+    return{srv,ms};
+  });
+
+  // После всех результатов — если пользователь не выбрал вручную, обновляем авто-выбор
+  Promise.all(promises).then(results=>{
+    if(_srvManual!==null)return;
+    const best=results
+      .filter(r=>r.ms!==null)
+      .sort((a,b)=>a.ms-b.ms)[0];
+    if(best){
+      NTFY=best.srv.url;
+      updateSrvSelectedInfo();
+      renderSrvList();
+    }
+  });
+}
+
+// Инициализация пикера
+function initServerPicker(){
+  // Раскрывашка
+  const hdr=$('srvHdr'),body=$('srvBody');
+  if(hdr&&body){
+    hdr.addEventListener('click',()=>{
+      const open=body.classList.contains('open');
+      body.classList.toggle('open',!open);
+      hdr.classList.toggle('open',!open);
+      if(!open)renderSrvList(); // обновить выделение при открытии
+    });
+  }
+  renderSrvList();
+  updateSrvSelectedInfo();
+  // Запускаем пинги сразу
+  measurePingsAndUpdate();
+}
+
+
 /** Один id в одном виде (строка), иначе history и poll считают разными ключами — дубли в DOM */
 function eventMsgId(ev){if(!ev||ev.id==null||ev.id==='')return'';return String(ev.id)}
 
@@ -1035,6 +1188,7 @@ $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()}
 /* ══ INIT ══ */
 initSec('nickSecHdr','nickSecBody','pc_nick_sec_open');
 initSec('roomSecHdr','roomSecBody','pc_room_sec_open');
+initServerPicker();
 renderChips();
 const last=getLastUsed();
 if(last&&last.n&&last.r&&!wasLoggedOut()){$('uname').value=last.n;$('rpass').value=last.r;doLogin()}
