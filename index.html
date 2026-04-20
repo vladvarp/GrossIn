@@ -62,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .island{display:inline-flex;align-items:center;gap:10px;background:rgba(0,0,0,.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.11);border-radius:50px;padding:6px 16px 6px 8px;cursor:pointer;transition:transform .15s,background .15s;user-select:none;position:relative}
 .island:hover{background:rgba(30,30,44,.85);transform:scale(1.02)}
 .island:active{transform:scale(.97)}
-.island-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:2px solid rgba(255,255,255,.15)}
+.island-av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;border:2px solid rgba(255,255,255,.15);cursor:pointer}
 .island-info{display:flex;flex-direction:column;gap:2px}
 .island-name{font-size:13px;font-weight:600;line-height:1.2}
 .island-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px;line-height:1.2}
@@ -84,7 +84,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* HEADER */
 .hdr{display:flex;align-items:center;gap:12px;padding:8px 18px 10px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0}
-.rav{width:38px;height:38px;border-radius:50%;background:var(--adim);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--accent2);flex-shrink:0}
+.rav{width:38px;height:38px;border-radius:50%;background:var(--adim);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;line-height:1;flex-shrink:0}
+#avatarPicker{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;display:none;z-index:210;width:min(300px,calc(100vw - 20px));box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:auto;box-sizing:border-box}
+#avatarPicker.show{display:block}
+#avatarPicker .av-head{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#avatarPicker .av-reset{font-size:11px;color:var(--accent2);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline}
+#avatarPicker .av-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+  max-height:198px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  padding:2px 0;
+}
+#avatarPicker .av-grid::-webkit-scrollbar{display:none}
+#avatarPicker .av-em{font-size:20px;padding:6px 4px;cursor:pointer;border-radius:var(--rxs);text-align:center;transition:background .15s,transform .1s;line-height:1;min-width:0}
+#avatarPicker .av-em:hover{background:var(--bg4);transform:scale(1.12)}
 .hdi{flex:1;min-width:0}
 .hdi h2{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hdi .sub{font-size:12px;color:var(--text3);display:flex;align-items:center;gap:5px;margin-top:2px}
@@ -210,9 +229,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="toast-wrap" id="toastWrap"></div>
 
 <!-- Island (floating) -->
-<div class="island-wrap" style="display:none">
+<div class="island-wrap" id="islandWrap" style="display:none">
+  <div id="avatarPicker">
+    <div class="av-head"><span>Ваш образ</span><button type="button" class="av-reset" id="avatarReset">Как в норе</button></div>
+    <div class="av-grid" id="avatarGrid"></div>
+  </div>
   <div class="island" id="island">
-    <div class="island-av" id="islandAv">🐭</div>
+    <div class="island-av" id="islandAv" title="Сменить аватарку">🐭</div>
     <div class="island-info">
       <div class="island-name" id="islandName">—</div>
       <div class="island-status"><span class="idot"></span><span id="islandCount">0 в сети</span></div>
@@ -308,19 +331,40 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 /* ══ CONFIG ══ */
 const NTFY='https://ntfy.sh';
-const MAX_RETRY_LOGIN=4, MAX_RETRY_SEND=5, POLL_MS=2500;
-const PRESENCE_TTL=15000; // online if heartbeat within 15s
+const MAX_RETRY_LOGIN=10, MAX_RETRY_SEND=20, POLL_MS=2500;
+const PRESENCE_TTL=30000; // online if heartbeat within 15s
 const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории ntfy запрашивать (шире TTL — чтобы не терять события на границе)
 
 /* ══ ANIMALS & COLORS ══ */
 const ANIMALS=['🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦆','🦉','🦇','🐺','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🦖','🐙','🦑','🐬','🦈','🐊','🦓','🐘','🦒','🦘','🦔'];
+const DEN_ICONS=['🕳️','🪵','🏠','⛺','🛖','🌿','🪹','🪨','🏕️','🍄','🦫','🐾','🪤','📦','🌲','🪺','🧀','🔦','🛏️','🪑','🌳','🍂','🦔','🐀','🏡','🎪'];
 const COLORS=['#7c6af7','#4caf82','#f06b6b','#f0a050','#50c8f0','#c070e8','#7ad4a0','#f07090','#e8c84a'];
+const AVATAR_PICK=[...new Set([...ANIMALS,...DEN_ICONS])];
 function strHash(s){let h=5381;for(const c of s)h=((h<<5)+h)^c.charCodeAt(0);return Math.abs(h)}
 function strColor(s){return COLORS[strHash(s)%COLORS.length]}
 function strAnimal(s){return ANIMALS[strHash(s)%ANIMALS.length]}
+function strDenIcon(roomKey){return DEN_ICONS[strHash(roomKey)%DEN_ICONS.length]}
+
+function getAvatarMap(){try{return JSON.parse(localStorage.getItem('pc_avatars')||'{}')}catch{return{}}}
+function setAvatarForNick(nick,emoji){if(!nick||!emoji)return;const m=getAvatarMap();m[nick]=emoji;try{localStorage.setItem('pc_avatars',JSON.stringify(m))}catch{}}
+function clearAvatarForNick(nick){if(!nick)return;const m=getAvatarMap();delete m[nick];try{localStorage.setItem('pc_avatars',JSON.stringify(m))}catch{}}
+function getAvatarForNick(nick){return getAvatarMap()[nick]||''}
+function getEffectiveAvatar(nick){const o=getAvatarForNick(nick);if(o)return o;return strAnimal(nick)}
+function displayAvatarFor(nick){
+  if(!nick||nick==='?')return'🐭';
+  const c=S.avatarCache.get(nick);if(c)return c;
+  const o=getAvatarForNick(nick);if(o)return o;
+  return strAnimal(nick);
+}
+function resolveMsgAvatar(nick,avRaw){
+  const t=(avRaw&&String(avRaw).trim())||'';
+  if(t){if(nick&&nick!=='?')S.avatarCache.set(nick,t);return t}
+  if(nick===S.nick)return getEffectiveAvatar(S.nick);
+  return displayAvatarFor(nick);
+}
 
 /* ══ STATE ══ */
-let S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map()};
+let S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
 
 /* ══ STORAGE ══ */
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch{return[]}};
@@ -400,7 +444,7 @@ function updateIsland(){
   }
   $('islandCount').textContent=cnt+' в сети';
   const c=strColor(S.nick||'x');
-  $('islandAv').textContent=strAnimal(S.nick||'x');
+  $('islandAv').textContent=getEffectiveAvatar(S.nick||'x');
   $('islandAv').style.border='2px solid '+c;
   $('islandName').style.color=c;
 }
@@ -420,7 +464,7 @@ function renderOnlinePanel(){
   for(const u of online){
     const c=strColor(u.nick);
     const d=mk('div','op-user');
-    d.innerHTML=`<div class="op-av" style="background:${c}22;border:1.5px solid ${c}">${strAnimal(u.nick)}</div><div class="op-uinfo"><div class="op-uname" style="color:${c}">${esc(u.nick)}</div><div class="op-uwhen" style="color:var(--green)">● онлайн</div></div>`;
+    d.innerHTML=`<div class="op-av" style="background:${c}22;border:1.5px solid ${c}">${displayAvatarFor(u.nick)}</div><div class="op-uinfo"><div class="op-uname" style="color:${c}">${esc(u.nick)}</div><div class="op-uwhen" style="color:var(--green)">● онлайн</div></div>`;
     $('opOnline').appendChild(d);
   }
   if(seen.length){
@@ -428,7 +472,7 @@ function renderOnlinePanel(){
     for(const u of seen.slice(0,8)){
       const c=strColor(u.nick);
       const d=mk('div','op-user');
-      d.innerHTML=`<div class="op-av" style="background:${c}15;opacity:.65">${strAnimal(u.nick)}</div><div class="op-uinfo"><div class="op-uname" style="color:${c};opacity:.7">${esc(u.nick)}</div><div class="op-uwhen">${fmtAgo(u.ts)}</div></div>`;
+      d.innerHTML=`<div class="op-av" style="background:${c}15;opacity:.65">${displayAvatarFor(u.nick)}</div><div class="op-uinfo"><div class="op-uname" style="color:${c};opacity:.7">${esc(u.nick)}</div><div class="op-uwhen">${fmtAgo(u.ts)}</div></div>`;
       $('opSeen').appendChild(d);
     }
   }else{$('opSeenSect').style.display='none'}
@@ -493,8 +537,8 @@ async function _pollPresenceRun(){
       _prevOnline=new Set(curOnline);
       _presenceBootstrapped=true;
     }else{
-      for(const nick of curOnline){if(!_prevOnline.has(nick)&&nick!==S.nick)toast(strAnimal(nick),nick+' вошёл в нору',strColor(nick))}
-      for(const nick of _prevOnline){if(!curOnline.has(nick)&&nick!==S.nick)toast(strAnimal(nick),nick+' покинул нору',strColor(nick))}
+      for(const nick of curOnline){if(!_prevOnline.has(nick)&&nick!==S.nick)toast(displayAvatarFor(nick),nick+' вошёл в нору',strColor(nick))}
+      for(const nick of _prevOnline){if(!curOnline.has(nick)&&nick!==S.nick)toast(displayAvatarFor(nick),nick+' покинул нору',strColor(nick))}
       _prevOnline=curOnline;
     }
     updateIsland();
@@ -514,9 +558,9 @@ async function doLogin(){
   const hash=await sha256hex('privchat:v2:'+pass);
   const phash=await sha256hex('privchat:v2:pres:'+pass);
   S.topic='pc-'+hash.slice(0,32);S.ptopic='pc-p-'+phash.slice(0,28);
-  S.nick=nick;S.pass=pass;S.since=0;S.known=new Set();S.queue=[];S.presence=new Map();
+  S.nick=nick;S.pass=pass;S.since=0;S.known=new Set();S.queue=[];S.presence=new Map();S.avatarCache=new Map();
   $('rname').textContent='Нора #'+hash.slice(0,6).toUpperCase();
-  $('rav').textContent=hash.slice(0,2).toUpperCase();
+  $('rav').textContent=strDenIcon(hash);
   $('islandName').textContent=nick;
 
   let lastErr='';
@@ -568,8 +612,8 @@ function isSingleEmoji(s){
 /* ══ RENDER MSG ══ */
 function appendMsg(ev,animate){
   if(S.known.has(ev.id))return;S.known.add(ev.id);
-  let nick='?',text='',photo='';
-  try{const d=JSON.parse(ev.message||'{}');nick=d.n||'?';text=d.t||ev.message;photo=d.photo||''}
+  let nick='?',text='',photo='',av='';
+  try{const d=JSON.parse(ev.message||'{}');nick=d.n||'?';text=d.t||ev.message;photo=d.photo||'';av=d.av||''}
   catch(_){text=ev.message||''}
 
   // Только живые сообщения с эфира — не из истории при входе
@@ -578,7 +622,7 @@ function appendMsg(ev,animate){
     mergePresenceTs(nick,Date.now());
     if(!wasOn){
       if(_presenceBootstrapped){
-        toast(strAnimal(nick),nick+' вошёл в нору',strColor(nick));
+        toast(displayAvatarFor(nick),nick+' вошёл в нору',strColor(nick));
         _prevOnline.add(nick);
       }
       updateIsland();
@@ -595,11 +639,11 @@ function appendMsg(ev,animate){
     const st=row.querySelector('.mstatus');if(st){st.className='mstatus ok';st.textContent='✓'}
     return;
   }
-  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:ev.id});
+  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:ev.id,av});
 }
 
-function buildMsg({nick,text,photo,ts,state,animate,id,pending}){
-  const own=nick===S.nick,color=strColor(nick),animal=strAnimal(nick);
+function buildMsg({nick,text,photo,ts,state,animate,id,pending,av}){
+  const own=nick===S.nick,color=strColor(nick),animal=resolveMsgAvatar(nick,av);
   const row=mk('div','mrow '+(own?'own':'other')+(state==='pending'?' pending':state==='failed'?' failed':''));
   if(!animate)row.style.animation='none';
   if(id)row.dataset.msgId=id;
@@ -659,7 +703,7 @@ async function sendMsg(){
   const inp=$('minput'),text=inp.value.trim();if(!text)return;
   inp.value='';autoResize();$('sendBtn').disabled=true;
   const pid='p'+(++pendSeq);
-  buildMsg({nick:S.nick,text,ts:Date.now(),state:'pending',animate:true,pending:pid});
+  buildMsg({nick:S.nick,text,ts:Date.now(),state:'pending',animate:true,pending:pid,av:getEffectiveAvatar(S.nick)});
   scrollBot();S.queue.push({pid,text,attempts:0});flushQ();
   $('sendBtn').disabled=false;inp.focus();
 }
@@ -679,7 +723,8 @@ async function trySend(item){
   try{
     const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
     let res;try{
-      const body=item.photo?JSON.stringify({n:S.nick,t:item.text||'',photo:item.photo}):JSON.stringify({n:S.nick,t:item.text});
+      const avj=getEffectiveAvatar(S.nick);
+      const body=item.photo?JSON.stringify({n:S.nick,t:item.text||'',photo:item.photo,av:avj}):JSON.stringify({n:S.nick,t:item.text,av:avj});
       res=await fetch(`${NTFY}/${S.topic}`,{method:'POST',body,signal:ctrl.signal});
     }finally{clearTimeout(tid)}
     return res.ok;
@@ -702,13 +747,46 @@ function retryP(pid){
   S.queue.push({pid,text,attempts:0});flushQ();
 }
 
+/* ══ AVATAR PICKER ══ */
+function renderAvatarGrid(){
+  const g=$('avatarGrid');if(!g)return;
+  g.innerHTML='';
+  for(const em of AVATAR_PICK){
+    const s=mk('span','av-em');s.textContent=em;s.title=em;
+    s.onclick=ev=>{ev.stopPropagation();pickAvatar(em)};
+    g.appendChild(s);
+  }
+}
+function pickAvatar(emoji){
+  setAvatarForNick(S.nick,emoji);
+  S.avatarCache.set(S.nick,emoji);
+  updateIsland();
+  $('avatarPicker').classList.remove('show');
+}
+$('islandAv').addEventListener('click',e=>{
+  e.stopPropagation();
+  $('opanel').classList.remove('show');
+  $('avatarPicker').classList.toggle('show');
+  if($('avatarPicker').classList.contains('show'))renderAvatarGrid();
+});
+$('avatarReset').addEventListener('click',e=>{
+  e.stopPropagation();
+  clearAvatarForNick(S.nick);
+  S.avatarCache.delete(S.nick);
+  updateIsland();
+  $('avatarPicker').classList.remove('show');
+});
+
 /* ══ EMOJI ══ */
 $('island').addEventListener('click',e=>{
+  if(e.target.closest('#islandAv'))return;
   e.stopPropagation();const p=$('opanel');
   if(p.classList.contains('show')){p.classList.remove('show')}
   else{renderOnlinePanel();p.classList.add('show')}
 });
-document.addEventListener('click',e=>{if(!$('island').contains(e.target))$('opanel').classList.remove('show')});
+document.addEventListener('click',e=>{
+  if(!$('islandWrap').contains(e.target)){$('opanel').classList.remove('show');$('avatarPicker').classList.remove('show')}
+});
 
 /* ══ COPY / LOGOUT ══ */
 $('copyBtn').addEventListener('click',async()=>{
@@ -726,7 +804,7 @@ $('logoutBtn').addEventListener('click',()=>{
       }
       clearInterval(S.timer);clearInterval(S.ptimer);
       _presenceBootstrapped=false;_prevOnline=new Set();
-      S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map()};
+      S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
       $('chat').style.display='none';$('login').style.display='';$('island').closest('.island-wrap').style.display='none'
       $('loginBtn').disabled=false;$('uname').value='';$('rpass').value='';$('err').textContent='';
       renderChips();
