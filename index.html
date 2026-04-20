@@ -148,7 +148,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mrow.other .mbubble{background:rgba(255,255,255,.05);border:1px solid var(--border);border-bottom-left-radius:4px}
 .mbubble.sticker{background:transparent!important;border:none!important;font-size:58px;line-height:1.1;padding:2px 6px}
 .mbubble.photobub{background:transparent!important;border:none!important;padding:3px}
-.photobub img{max-width:220px;max-height:260px;border-radius:12px;display:block;cursor:pointer;border:1px solid var(--border)}
+.photobub img{max-width:220px;max-height:260px;width:auto;height:auto;object-fit:contain;border-radius:12px;display:block;cursor:pointer;border:1px solid var(--border)}
 .mrow.pending .mbubble{opacity:.55}
 .mrow.failed .mbubble{border-color:rgba(240,107,107,.4);background:rgba(240,107,107,.08)}
 .mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 8px 0 12px;display:flex;align-items:center;gap:4px}
@@ -163,6 +163,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mq-t{color:var(--text3);white-space:pre-wrap;word-break:break-word;max-height:4.2em;overflow:hidden}
 .mbody{word-break:break-word}
 .photocap{font-size:13px;padding:4px 6px 2px;color:var(--text2)}
+.photo-up-foot{margin-top:8px;max-width:220px;display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.photo-up-bar-wrap{height:4px;border-radius:4px;background:var(--bg4);overflow:hidden}
+.photo-up-bar{height:100%;width:0%;border-radius:4px;background:var(--accent);transition:width .15s ease-out}
+.photo-up-bar.photo-up-indet{width:100%!important;animation:photoUpPulse .85s ease-in-out infinite}
+@keyframes photoUpPulse{0%,100%{opacity:.32}50%{opacity:.9}}
+.photo-up-label{font-size:11px;color:var(--text3)}
+.photo-up-cancel{align-self:flex-start;font-size:11px;color:var(--accent2);background:none;border:none;cursor:pointer;padding:2px 0;text-decoration:underline;font-family:inherit}
+.photo-up-cancel:hover{color:var(--accent)}
 .reply-bar{display:none;align-items:flex-start;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.45}
 .reply-bar.show{display:flex}
 .reply-bar-inner{flex:1;min-width:0;border-left:3px solid var(--accent);padding-left:10px}
@@ -427,6 +435,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div class="irow">
        <button class="iicobtn" id="emojiBtn" title="Эмодзи">🐹</button>
+      <button type="button" class="iicobtn" id="photoBtn" title="Отправить фото" aria-label="Отправить фото">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </button>
+      <input type="file" id="photoInput" accept="image/*" style="display:none" aria-hidden="true"/>
       <textarea id="minput" rows="1" placeholder="Написать сообщение…" maxlength="2000"></textarea>
       <button id="sendBtn" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -453,6 +465,16 @@ const PING_REFRESH_MS=30000;
 const SAFETY_PULL_MS=12000;
 const PRESENCE_TTL=30000; // online if heartbeat within 15s
 const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории ntfy запрашивать (шире TTL — чтобы не терять события на границе)
+
+/** Анонимная временная загрузка (как «хостинг для форумов»). Параметр time в API Litterbox обязателен: только 1h | 12h | 24h | 72h */
+const LITTERBOX_UPLOAD='https://litterbox.catbox.moe/resources/internals/api.php';
+const LITTERBOX_TIME='72h';
+const PHOTO_MAX_BYTES=12*1024*1024;
+/** Если загрузка с браузера на Litterbox не проходит (CORS/сеть), можно вписать ключ с https://api.imgbb.com */
+const IMGBB_KEY='3d7dc282b048d6ac33f2822064150f8c';
+const PHOTO_PRIVACY_LS='pc_photo_privacy_ok';
+/** Макс. ширина превью в ленте; по сети грузится уменьшенная копия (не весь оригинал) */
+const CHAT_PHOTO_THUMB_MAX=220;
 
 /* ══ ANIMALS & COLORS ══ */
 const ANIMALS=['🥥','🏝️','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦆','🦉','🦇','🐺','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🦖','🐙','🦑','🐬','🦈','🐊','🦓','🐘','🦒','🦘','🦔'];
@@ -565,6 +587,19 @@ function initSec(h,b,k){
 const $=id=>document.getElementById(id);
 const mk=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
 const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/** Превью в чате: прокси ужимает картинку (оригинал только по тапу в lightbox и в ntfy) */
+function chatPhotoThumbUrl(fullUrl){
+  if(!fullUrl||typeof fullUrl!=='string')return fullUrl;
+  const s=fullUrl.trim();
+  if(s.startsWith('blob:')||s.startsWith('data:'))return s;
+  try{
+    const u=new URL(s);
+    if(u.protocol!=='http:'&&u.protocol!=='https:')return s;
+    if(/(^|\.)wsrv\.nl$/i.test(u.hostname))return s;
+    return 'https://wsrv.nl/?url='+encodeURIComponent(s)+'&w='+CHAT_PHOTO_THUMB_MAX+'&fit=inside&output=webp&q=82';
+  }catch(_){return s}
+}
 
 /* ══ SUBTLE SOUNDS (Web Audio, без файлов) ══ */
 let _actx=null;
@@ -1053,7 +1088,8 @@ function appendMsg(ev,animate){
   let nick='?',text='',photo='',av='',quote=null;
   try{
     const d=JSON.parse(ev.message||'{}');
-    nick=d.n||'?';text=d.t||ev.message;photo=d.photo||'';av=d.av||'';
+    nick=d.n||'?';photo=String(d.photo||'').trim();av=d.av||'';
+    text=photo?(d.t!=null?String(d.t):''):(d.t||ev.message);
     if(d.q&&d.q.n!=null)quote={n:String(d.q.n),t:String(d.q.t||'')};
   }catch(_){text=ev.message||''}
 
@@ -1088,14 +1124,15 @@ function appendMsg(ev,animate){
   buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:mid||ev.id,av,quote});
 }
 
-function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote}){
+function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote,localPreview}){
   hideEmptyDenMessage();
   const own=nick===S.nick,color=strColor(nick),animal=resolveMsgAvatar(nick,av);
-  const row=mk('div','mrow '+(own?'own':'other')+(state==='pending'?' pending':state==='failed'?' failed':''));
+  const pendLike=state==='pending'||state==='uploading';
+  const row=mk('div','mrow '+(own?'own':'other')+(pendLike?' pending':state==='failed'?' failed':''));
   if(!animate)row.style.animation='none';
   if(id)row.dataset.msgId=id;
   if(pending)row.dataset.pendingId=pending;
-  if(pending&&text&&!photo)row.dataset.sendText=text;
+  if(pending&&text&&!photo&&!localPreview)row.dataset.sendText=text;
   if(pending&&quote)try{row.dataset.quoteJson=JSON.stringify(quote)}catch(_){}
 
   if(!own){
@@ -1111,11 +1148,34 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote}){
     const mt=mk('div','mq-t');mt.textContent=truncateQ(quote.t);
     mq.append(mn,mt);bub.appendChild(mq);
   }
-  if(photo){
+  if(photo||localPreview){
+    const up=state==='uploading'&&!!localPreview;
     bub.classList.add('photobub');
-    const ppid=photo.slice(-20);bub.dataset.ppid=ppid;
-    const img=mk('img');img.src=photo;img.alt='фото';img.onclick=()=>openLB(photo);bub.appendChild(img);
-    if(text){const cap=mk('div','photocap');cap.textContent=text;bub.appendChild(cap)}
+    const thumbSrc=up?localPreview:chatPhotoThumbUrl(photo);
+    const img=mk('img');img.src=thumbSrc;img.alt='фото';img.loading='lazy';img.decoding='async';
+    if(up){img.style.cursor='default';img.style.opacity='0.92'}
+    else{
+      img.onclick=()=>openLB(photo);
+      if(photo){
+        bub.dataset.fullPhoto=photo;
+        img.onerror=()=>{img.onerror=null;img.src=photo};
+      }
+    }
+    if(photo&&!up){const ppid=photo.slice(-20);bub.dataset.ppid=ppid}
+    bub.appendChild(img);
+    const capText=String(text||'').trim();
+    if(capText&&(!photo||capText!==String(photo).trim())){
+      const cap=mk('div','photocap');cap.textContent=text;bub.appendChild(cap);
+    }
+    if(up){
+      const foot=mk('div','photo-up-foot');
+      const barW=mk('div','photo-up-bar-wrap');
+      const bar=mk('div','photo-up-bar');
+      const lab=mk('div','photo-up-label');lab.textContent='Загрузка… 0%';
+      const cancel=mk('button','photo-up-cancel');cancel.type='button';cancel.textContent='Отмена';
+      barW.appendChild(bar);foot.append(barW,lab,cancel);bub.appendChild(foot);
+      cancel.addEventListener('click',e=>{e.stopPropagation();cleanupPhotoUpload(pending)});
+    }
   }else{
     const body=mk('div','mbody');
     if(isSingleEmoji(text))bub.classList.add('sticker');
@@ -1130,8 +1190,11 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote}){
   tm.appendChild(qb);
   const tms=mk('span');tms.style.flex='1';tms.style.minWidth='0';tms.textContent=fmtTime(ts||Date.now());tm.appendChild(tms);
   if(own){
-    const st=mk('span','mstatus '+(state==='pending'?'sending':state==='failed'?'fail':'ok'));
-    st.textContent=state==='pending'?'отправка…':state==='failed'?'ошибка':'✓';tm.appendChild(st);
+    let stKind='ok',stTxt='✓';
+    if(state==='uploading'){stKind='sending';stTxt='загрузка…'}
+    else if(state==='pending'){stKind='sending';stTxt='отправка…'}
+    else if(state==='failed'){stKind='fail';stTxt='ошибка'}
+    const st=mk('span','mstatus '+stKind);st.textContent=stTxt;tm.appendChild(st);
     if(state==='failed'&&pending){const rb=mk('button','retry-btn');rb.textContent='повторить';rb.onclick=()=>retryP(pending);tm.appendChild(rb)}
   }
   wrap.appendChild(tm);row.appendChild(wrap);$('msgs').appendChild(row);updateMsgVerticalLayout();return row;
@@ -1170,6 +1233,10 @@ async function safetyPull(){
 
 async function forceRefresh(){
   if(!S.topic)return;
+  if(_photoBusy){
+    alertD('Подождите','Сначала дождитесь загрузки фото или отмените её.','ОК',()=>{});
+    return;
+  }
   if(S.queue&&S.queue.length){
     alertD('Подождите','Сначала дождитесь отправки сообщений.','ОК',()=>{});
     return;
@@ -1238,6 +1305,181 @@ async function poll(){
 
 /* ══ SEND TEXT ══ */
 let pendSeq=0;
+let _photoBusy=false;
+const activePhotoUploads=new Map();
+
+function cleanupPhotoUpload(pid){
+  const h=activePhotoUploads.get(pid);
+  if(h){
+    activePhotoUploads.delete(pid);
+    if(h.xhr)try{h.xhr.abort()}catch(_){}
+    try{h.ac.abort()}catch(_){}
+    if(h.revokeUrl)try{URL.revokeObjectURL(h.revokeUrl)}catch(_){}
+  }
+  const el=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);
+  if(el)el.remove();
+  updateMsgVerticalLayout();
+  _photoBusy=false;
+}
+
+function uploadLitterboxXHR(file,{onProgress,pid}){
+  return new Promise((res,rej)=>{
+    const fd=new FormData();
+    fd.append('reqtype','fileupload');
+    fd.append('time',LITTERBOX_TIME);
+    fd.append('fileToUpload',file,file.name||'image.jpg');
+    const xhr=new XMLHttpRequest();
+    const slot=activePhotoUploads.get(pid);
+    if(slot)slot.xhr=xhr;
+    xhr.open('POST',LITTERBOX_UPLOAD);
+    xhr.upload.onprogress=e=>{
+      if(typeof onProgress!=='function')return;
+      if(e.lengthComputable)onProgress(Math.min(99,Math.round(100*e.loaded/e.total)));
+      else onProgress(null);
+    };
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){
+        const txt=xhr.responseText.trim().split(/\s+/)[0];
+        if(/^https?:\/\//i.test(txt)){
+          if(typeof onProgress==='function')onProgress(100);
+          return res(txt);
+        }
+      }
+      rej(new Error('upload'));
+    };
+    xhr.onerror=()=>rej(new Error('network'));
+    xhr.onabort=()=>rej(Object.assign(new Error('abort'),{name:'AbortError'}));
+    xhr.send(fd);
+  });
+}
+
+async function uploadImageImgBB(file,signal){
+  if(!IMGBB_KEY)return null;
+  if(signal&&signal.aborted)throw Object.assign(new Error('abort'),{name:'AbortError'});
+  const b64=await new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>{const s=r.result;if(typeof s!=='string'||!s.includes(','))rej();else res(s.split(',')[1])};
+    r.onerror=()=>rej();
+    r.readAsDataURL(file);
+  });
+  if(signal&&signal.aborted)throw Object.assign(new Error('abort'),{name:'AbortError'});
+  const body=new URLSearchParams();
+  body.set('key',IMGBB_KEY);
+  body.set('image',b64);
+  const to=new AbortController();
+  const tid=setTimeout(()=>to.abort(),120000);
+  if(signal)signal.addEventListener('abort',()=>{clearTimeout(tid);try{to.abort()}catch(_){}},{once:true});
+  try{
+    const res=await fetch('https://api.imgbb.com/1/upload',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+      body:body.toString(),
+      signal:to.signal
+    });
+    const j=await res.json().catch(()=>({}));
+    if(j.success&&j.data&&typeof j.data.url==='string')return j.data.url.trim();
+  }finally{clearTimeout(tid)}
+  return null;
+}
+
+async function sendPhoto(file){
+  if(_photoBusy||!S.topic)return;
+  if(!file||!file.type||!file.type.startsWith('image/')){
+    alertD('Фото','Выберите файл изображения.','ОК',()=>{});
+    return;
+  }
+  if(file.size>PHOTO_MAX_BYTES){
+    alertD('Фото','Файл слишком большой (максимум '+Math.round(PHOTO_MAX_BYTES/1024/1024)+' МБ).','ОК',()=>{});
+    return;
+  }
+  const q=replyDraft;
+  setReplyDraft(null);
+  const inp=$('minput');
+  const caption=inp.value.trim();
+  inp.value='';
+  autoResize();
+  $('sendBtn').disabled=!inp.value.trim();
+
+  _photoBusy=true;
+  const pid='p'+(++pendSeq);
+  const objUrl=URL.createObjectURL(file);
+  const uploadAc=new AbortController();
+  activePhotoUploads.set(pid,{xhr:null,revokeUrl:objUrl,ac:uploadAc});
+
+  buildMsg({nick:S.nick,text:caption,state:'uploading',animate:true,pending:pid,localPreview:objUrl,av:getEffectiveAvatar(S.nick),quote:q});
+  scrollBot();
+  inp.focus();
+
+  const upd=p=>{
+    const r=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);if(!r)return;
+    const b=r.querySelector('.photo-up-bar'),l=r.querySelector('.photo-up-label');
+    if(p===null){
+      if(b){b.style.width='100%';b.classList.add('photo-up-indet')}
+      if(l)l.textContent='Загрузка…';
+    }else{
+      if(b){b.classList.remove('photo-up-indet');b.style.width=Math.max(0,Math.min(100,p))+'%'}
+      if(l)l.textContent='Загрузка… '+(p>=100?100:p)+'%';
+    }
+  };
+
+  let url=null;
+  try{
+    url=await uploadLitterboxXHR(file,{onProgress:upd,pid});
+  }catch(e){
+    if(e.name==='AbortError'){cleanupPhotoUpload(pid);return}
+    if(IMGBB_KEY){
+      const r=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);
+      const l=r&&r.querySelector('.photo-up-label');
+      const b=r&&r.querySelector('.photo-up-bar');
+      if(l)l.textContent='Загрузка… (другой хост)';
+      if(b){b.classList.add('photo-up-indet');b.style.width='100%'}
+      try{
+        url=await uploadImageImgBB(file,uploadAc.signal);
+      }catch(e2){
+        if(e2.name==='AbortError'){cleanupPhotoUpload(pid);return}
+      }
+    }
+  }
+
+  const h=activePhotoUploads.get(pid);
+  if(h)activePhotoUploads.delete(pid);
+  if(h&&h.revokeUrl)try{URL.revokeObjectURL(h.revokeUrl)}catch(_){}
+  _photoBusy=false;
+
+  const row=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);
+  if(!url){
+    if(row)row.remove();
+    updateMsgVerticalLayout();
+    alertD('Не удалось загрузить','Проверьте соединение. Если браузер блокирует загрузку на Litterbox, в начале скрипта можно задать IMGBB_KEY (бесплатный ключ на api.imgbb.com).','ОК',()=>{});
+    return;
+  }
+
+  if(!row)return;
+
+  delete row.dataset.sendText;
+  const bub=row.querySelector('.mbubble');
+  const img=row.querySelector('.photobub img');
+  if(img){
+    bub.dataset.fullPhoto=url;
+    img.src=chatPhotoThumbUrl(url);
+    img.loading='lazy';
+    img.decoding='async';
+    img.style.opacity='';
+    img.style.cursor='pointer';
+    img.onclick=()=>openLB(url);
+    img.onerror=()=>{img.onerror=null;img.src=url};
+  }
+  const foot=row.querySelector('.photo-up-foot');
+  if(foot)foot.remove();
+  if(bub)bub.dataset.ppid=url.slice(-20);
+
+  const st=row.querySelector('.mstatus');
+  if(st){st.className='mstatus sending';st.textContent='отправка…';}
+
+  S.queue.push({pid,text:caption||'',photo:url,attempts:0,quote:q||undefined});
+  flushQ();
+}
+
 async function sendMsg(){
   const inp=$('minput'),text=inp.value.trim();if(!text)return;
   const q=replyDraft;setReplyDraft(null);
@@ -1284,12 +1526,21 @@ function setPendSt(pid,state){
 }
 function retryP(pid){
   const el=document.querySelector(`[data-pending-id="${pid}"]`);if(!el)return;
-  const text=el.dataset.sendText||el.querySelector('.mbody')?.textContent||el.querySelector('.mbubble')?.textContent||'';
+  const imgEl=el.querySelector('.photobub img');
+  const bubEl=el.querySelector('.photobub');
+  let text='',photo;
+  if(imgEl){
+    photo=(bubEl&&bubEl.dataset.fullPhoto)||imgEl.getAttribute('src')||'';
+    const cap=el.querySelector('.photocap');
+    text=(cap&&cap.textContent.trim())||'';
+  }else{
+    text=el.dataset.sendText||el.querySelector('.mbody')?.textContent||el.querySelector('.mbubble')?.textContent||'';
+  }
   let quote;try{quote=el.dataset.quoteJson?JSON.parse(el.dataset.quoteJson):undefined}catch(_){}
   el.classList.remove('failed');el.classList.add('pending');
   const st=el.querySelector('.mstatus');if(st){st.className='mstatus sending';st.textContent='отправка…'}
   const rb=el.querySelector('.retry-btn');if(rb)rb.remove();
-  S.queue.push({pid,text,attempts:0,quote});flushQ();
+  S.queue.push({pid,text,attempts:0,quote,...(photo?{photo}:{})});flushQ();
 }
 
 /* ══ AVATAR PICKER ══ */
@@ -1388,6 +1639,28 @@ function autoResize(){const t=$('minput');t.style.height='auto';t.style.height=M
 $('minput').addEventListener('input',()=>{autoResize();$('sendBtn').disabled=!$('minput').value.trim()});
 $('minput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!$('sendBtn').disabled)sendMsg()}});
 $('sendBtn').addEventListener('click',sendMsg);
+function openPhotoPicker(){
+  if(_photoBusy)return;
+  try{
+    if(localStorage.getItem(PHOTO_PRIVACY_LS)==='1'){$('photoInput').click();return}
+  }catch(_){}
+  confirmD(
+    'Фото не совсем приватное',
+    'Снимок сначала попадает на публичный файлообменник: у кого есть ссылка — тот может открыть картинку. В нору через ntfy уходит только эта ссылка, не сам файл. Не отправляйте то, что нельзя показывать посторонним.',
+    'Понятно, выбрать фото',
+    idx=>{
+      if(idx!==1)return;
+      try{localStorage.setItem(PHOTO_PRIVACY_LS,'1')}catch(_){}
+      $('photoInput').click();
+    }
+  );
+}
+$('photoBtn').addEventListener('click',openPhotoPicker);
+$('photoInput').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0];
+  e.target.value='';
+  if(f)sendPhoto(f);
+});
 $('loginBtn').addEventListener('click',doLogin);
 $('overlayCancelBtn').addEventListener('click',()=>{if(_overlayCancelHandler)_overlayCancelHandler()});
 $('rpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
