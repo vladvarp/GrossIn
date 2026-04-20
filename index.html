@@ -344,13 +344,48 @@ const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории
 
 /* ══ ANIMALS & COLORS ══ */
 const ANIMALS=['🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🦆','🦉','🦇','🐺','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐢','🐍','🦎','🦖','🐙','🦑','🐬','🦈','🐊','🦓','🐘','🦒','🦘','🦔'];
-const DEN_ICONS=['🕳️','🪵','🏠','⛺','🛖','🌿','🪹','🪨','🏕️','🍄','🦫','🐾','🪤','📦','🌲','🪺','🧀','🔦','🛏️','🪑','🌳','🍂','🦔','🐀','🏡','🎪'];
+/** Одна запись = пара «эмодзи + название» для этой норы (выбор по хешу пароля) */
+const DEN_FLAVOR=[
+  {icon:'🕳️',title:'Нора без дна'},
+  {icon:'🏔️',title:'Нора в горах'},
+  {icon:'⛺',title:'Нора под палаткой'},
+  {icon:'🪵',title:'Нора из поленьев'},
+  {icon:'🏠',title:'Нора-домик'},
+  {icon:'🛖',title:'Нора-шалаш'},
+  {icon:'🌿',title:'Нора в траве'},
+  {icon:'🪹',title:'Нора-гнездышко'},
+  {icon:'🪨',title:'Нора в валуне'},
+  {icon:'🏕️',title:'Туристская нора'},
+  {icon:'🍄',title:'Грибная нора'},
+  {icon:'🦫',title:'Бобровая нора'},
+  {icon:'🐾',title:'Нора со следами'},
+  {icon:'🪤',title:'Нора-ловушка'},
+  {icon:'📦',title:'Нора-коробка'},
+  {icon:'🌲',title:'Нора в чаще'},
+  {icon:'🪺',title:'Гнездовая нора'},
+  {icon:'🧀',title:'Сырная нора'},
+  {icon:'🔦',title:'Ночная нора'},
+  {icon:'🛏️',title:'Нора для сна'},
+  {icon:'🪑',title:'Нора с табуретом'},
+  {icon:'🌳',title:'Нора у дуба'},
+  {icon:'🍂',title:'Осенняя нора'},
+  {icon:'🦔',title:'Ёжья нора'},
+  {icon:'🐀',title:'Классическая нора'},
+  {icon:'🏡',title:'Загородная нора'},
+  {icon:'🎪',title:'Нора-шапито'},
+  {icon:'🌙',title:'Нора под луной'},
+  {icon:'⭐',title:'Нора под звёздами'},
+  {icon:'🌊',title:'Нора у моря'},
+  {icon:'⛰️',title:'Нора в ущелье'},
+  {icon:'🏞️',title:'Нора у ручья'},
+  {icon:'🍯',title:'Медовая нора'}
+];
 const COLORS=['#7c6af7','#4caf82','#f06b6b','#f0a050','#50c8f0','#c070e8','#7ad4a0','#f07090','#e8c84a'];
-const AVATAR_PICK=[...new Set([...ANIMALS,...DEN_ICONS])];
+const AVATAR_PICK=[...new Set([...ANIMALS,...DEN_FLAVOR.map(f=>f.icon)])];
 function strHash(s){let h=5381;for(const c of s)h=((h<<5)+h)^c.charCodeAt(0);return Math.abs(h)}
 function strColor(s){return COLORS[strHash(s)%COLORS.length]}
 function strAnimal(s){return ANIMALS[strHash(s)%ANIMALS.length]}
-function strDenIcon(roomKey){return DEN_ICONS[strHash(roomKey)%DEN_ICONS.length]}
+function denFlavor(roomKey){return DEN_FLAVOR[strHash(String(roomKey))%DEN_FLAVOR.length]}
 
 function getAvatarMap(){try{return JSON.parse(localStorage.getItem('pc_avatars')||'{}')}catch{return{}}}
 function setAvatarForNick(nick,emoji){if(!nick||!emoji)return;const m=getAvatarMap();m[nick]=emoji;try{localStorage.setItem('pc_avatars',JSON.stringify(m))}catch{}}
@@ -566,8 +601,9 @@ async function doLogin(){
   const phash=await sha256hex('privchat:v2:pres:'+pass);
   S.topic='pc-'+hash.slice(0,32);S.ptopic='pc-p-'+phash.slice(0,28);
   S.nick=nick;S.pass=pass;S.since=0;S.known=new Set();S.queue=[];S.presence=new Map();S.avatarCache=new Map();
-  $('rname').textContent='Нора #'+hash.slice(0,6).toUpperCase();
-  $('rav').textContent=strDenIcon(hash);
+  const flavor=denFlavor(hash);
+  $('rname').textContent=flavor.title;
+  $('rav').textContent=flavor.icon;
   $('islandName').textContent=nick;
 
   let lastErr='';
