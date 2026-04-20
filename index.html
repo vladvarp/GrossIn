@@ -220,6 +220,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .spin{width:34px;height:34px;border-radius:50%;border:2px solid var(--border2);border-top-color:var(--accent);animation:spin .75s linear infinite}
 .otext{font-size:14px;color:var(--text2)}
 .oretry{font-size:12px;color:var(--text3)}
+.ocancel{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:10px;padding:7px 14px;font-size:13px;cursor:pointer;transition:background .15s,color .15s}
+.ocancel:hover{background:var(--bg4);color:var(--text)}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 #dialog{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center}
@@ -274,7 +276,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 
-<div id="overlay" class="off"><div class="spin"></div><div class="otext" id="otext">Крысиное подключение…</div><div class="oretry" id="oretry"></div></div>
+<div id="overlay" class="off"><div class="spin"></div><div class="otext" id="otext">Крысиное подключение…</div><div class="oretry" id="oretry"></div><button type="button" id="overlayCancelBtn" class="ocancel" style="display:none">Отмена</button></div>
 
 <div id="dialog" class="off">
   <div class="dialog-backdrop"></div>
@@ -615,7 +617,12 @@ function fmtAgo(ts){const s=Math.floor((Date.now()-ts)/1000);if(s<60)return'то
 async function sha256hex(str){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('')}
 
 function showLoad(t,s){$('otext').textContent=t;$('oretry').textContent=s||'';$('overlay').classList.remove('off')}
-function hideLoad(){$('overlay').classList.add('off')}
+function hideLoad(){$('overlay').classList.add('off');$('overlayCancelBtn').style.display='none';_overlayCancelHandler=null}
+let _overlayCancelHandler=null;
+function setOverlayCancelable(handler){
+  _overlayCancelHandler=typeof handler==='function'?handler:null;
+  $('overlayCancelBtn').style.display=_overlayCancelHandler?'':'none';
+}
 function setStatus(st,t){$('sdot').className='dot'+(st==='on'?'':st==='warn'?' warn':' off');$('stext').textContent=t}
 function scrollBot(){const m=$('msgs');m.scrollTop=m.scrollHeight}
 
@@ -740,6 +747,7 @@ async function _pollPresenceRun(){
 }
 
 /* ══ LOGIN ══ */
+let _loginCancelRequested=false;
 async function doLogin(){
   const nick=$('uname').value.trim(),pass=$('rpass').value;
   $('err').textContent='';
@@ -747,10 +755,15 @@ async function doLogin(){
   if(!pass){$('err').textContent='Введите пароль норы';return}
   if(nick.length>25){$('err').textContent='У нас лимит на символы, а не на амбиции. Ты случайно не Бенедикт Камбербэтч? Хотя даже он покороче будет. Мы тут чат делаем, а не надпись на надгробии.';return}
   $('loginBtn').disabled=true;
+  _loginCancelRequested=false;
+  setOverlayCancelable(()=>{_loginCancelRequested=true;});
 
   showLoad('Генерация ключа…');
   const hash=await sha256hex('privchat:v2:'+pass);
   const phash=await sha256hex('privchat:v2:pres:'+pass);
+  if(_loginCancelRequested){
+    hideLoad();$('loginBtn').disabled=false;$('err').textContent='Подключение отменено';return;
+  }
   S.topic='pc-'+hash.slice(0,32);S.ptopic='pc-p-'+phash.slice(0,28);
   S.nick=nick;S.pass=pass;S.since=0;S.known=new Set();S.queue=[];S.presence=new Map();S.avatarCache=new Map();
   const flavor=denFlavor(hash);
@@ -760,6 +773,7 @@ async function doLogin(){
 
   let lastErr='';
   for(let a=1;a<=MAX_RETRY_LOGIN;a++){
+    if(_loginCancelRequested)break;
     showLoad(a===1?'Загрузка истории…':`Попытка ${a} из ${MAX_RETRY_LOGIN}…`,lastErr?'Ошибка: '+lastErr:'');
     try{
       await loadHistory();hideLoad();
@@ -777,6 +791,9 @@ async function doLogin(){
       S.ptimer=setInterval(async()=>{await sendPresence();await pollPresence();updateIsland()},6000);
       return;
     }catch(e){lastErr=e.message||String(e);if(a<MAX_RETRY_LOGIN)await sleep(800*a)}
+  }
+  if(_loginCancelRequested){
+    hideLoad();$('loginBtn').disabled=false;$('err').textContent='Подключение отменено';return;
   }
   hideLoad();$('loginBtn').disabled=false;$('err').textContent='Не удалось подключиться: '+lastErr;
 }
@@ -1322,6 +1339,7 @@ $('minput').addEventListener('input',()=>{autoResize();$('sendBtn').disabled=!$(
 $('minput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!$('sendBtn').disabled)sendMsg()}});
 $('sendBtn').addEventListener('click',sendMsg);
 $('loginBtn').addEventListener('click',doLogin);
+$('overlayCancelBtn').addEventListener('click',()=>{if(_overlayCancelHandler)_overlayCancelHandler()});
 $('rpass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 $('uname').addEventListener('keydown',e=>{if(e.key==='Enter')$('rpass').focus()});
 
