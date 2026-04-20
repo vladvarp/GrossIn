@@ -1427,8 +1427,9 @@ function renderEGrid(cat){
 }
 function insertEmoji(e){
   const inp=$('minput'),s=inp.selectionStart,v=inp.value;
-  inp.value=v.slice(0,s)+e+v.slice(inp.selectionEnd);inp.setSelectionRange(s+e.length,s+e.length);
-  inp.focus();autoResize();$('sendBtn').disabled=!inp.value.trim();saveRecent(e);
+  inp.value=v.slice(0,s)+e+v.slice(inp.selectionEnd);
+  inp.setSelectionRange(s+e.length,s+e.length);
+  autoResize();$('sendBtn').disabled=!inp.value.trim();saveRecent(e);
 }
 $('emojiBtn').addEventListener('click',e=>{
   e.stopPropagation();$('emojiPicker').classList.toggle('show');
