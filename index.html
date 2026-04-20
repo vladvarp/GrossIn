@@ -17,7 +17,10 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 
 /* LOGIN */
-#login{width:100%;max-width:440px;padding:1.5rem;animation:fadeUp .35s ease;overflow-y:auto;max-height:100vh}
+#login{width:100%;max-width:440px;padding:1.5rem;animation:fadeUp .35s ease;overflow-y:auto;max-height:100vh;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+#login::-webkit-scrollbar{width:6px}
+#login::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:8px}
+#login::-webkit-scrollbar-track{background:transparent}
 .logo{text-align:center;margin-bottom:1.5rem}
 .logo-ring{width:56px;height:56px;border-radius:50%;background:var(--adim);border:1.5px solid var(--accent);display:inline-flex;align-items:center;justify-content:center;margin-bottom:.65rem}
 .logo h1{font-size:21px;font-weight:600;letter-spacing:-.3px}
@@ -251,7 +254,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .srv-hdr.open .srv-hdr-arrow{transform:rotate(90deg)}
 .srv-body{overflow:hidden;max-height:0;transition:max-height .3s ease}
 .srv-body.open{max-height:340px}
-.srv-list{display:flex;flex-direction:column;gap:4px;padding:4px 0 6px}
+.srv-list{display:flex;flex-direction:column;gap:4px;padding:4px 0 6px;max-height:252px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bg4) transparent}
+.srv-list::-webkit-scrollbar{width:5px}
+.srv-list::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:8px}
+.srv-list::-webkit-scrollbar-track{background:transparent}
 .srv-row{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rsm);cursor:pointer;transition:background .15s,border-color .15s}
 .srv-row:hover{background:var(--bg4);border-color:var(--border2)}
 .srv-row.selected{border-color:var(--accent);background:var(--adim)}
@@ -431,12 +437,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 /* ══ CONFIG ══ */
 const NTFY_SERVERS=[
-  {url:'https://ntfy.sh',       label:'ntfy.sh',         flag:'🇺🇸', icon:'🗽'},
-  {url:'https://ntfy.adminforge.de', label:'adminforge.de', flag:'🇩🇪', icon:'⚙️'},
-  {url:'https://ntfy.envs.net', label:'envs.net',        flag:'🇩🇪', icon:'🌿'},
-  {url:'https://ntfy.hostux.net',label:'hostux.net',     flag:'🇫🇷', icon:'🧭'},
-  {url:'https://ntfy.mzte.de',  label:'mzte.de',         flag:'🇩🇪', icon:'🚀'},
-  {url:'https://ntfy.tedomum.fr',label:'tedomum.fr',     flag:'🇫🇷', icon:'🍷'},
+  {url:'https://ntfy.sh',            label:'ntfy.sh',         flag:'🇺🇸', icon:'🗽'},
+  {url:'https://ntfy.jae.fi',        label:'jae.fi',          flag:'🇫🇮', icon:'❄️'},
+  {url:'https://ntfy.fossman.de',    label:'fossman.de',      flag:'🇩🇪', icon:'🧪'},
+  {url:'https://ntfy.adminforge.de', label:'adminforge.de',   flag:'🇩🇪', icon:'⚙️'},
+  {url:'https://ntfy.envs.net',      label:'envs.net',        flag:'🇩🇪', icon:'🌿'},
+  {url:'https://ntfy.hostux.net',    label:'hostux.net',      flag:'🇫🇷', icon:'🧭'},
+  {url:'https://ntfy.mzte.de',       label:'mzte.de',         flag:'🇩🇪', icon:'🚀'},
+  {url:'https://ntfy.tedomum.fr',    label:'tedomum.fr',      flag:'🇫🇷', icon:'🍷'},
 ];
 let NTFY='https://ntfy.sh'; // выбирается пользователем и запоминается
 const MAX_RETRY_LOGIN=10, MAX_RETRY_SEND=20, POLL_MS=2500;
