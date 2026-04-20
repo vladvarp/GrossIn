@@ -601,6 +601,25 @@ function chatPhotoThumbUrl(fullUrl){
   }catch(_){return s}
 }
 
+/** Полный URL картинки для ntfy / повтора (не превью wsrv) */
+function fullPhotoUrlFromBubble(bubEl,imgEl){
+  const d=bubEl&&bubEl.dataset&&bubEl.dataset.fullPhoto;
+  if(d)return String(d).trim();
+  const src=(imgEl&&imgEl.getAttribute('src'))||'';
+  if(!src)return'';
+  try{
+    const u=new URL(src,location.href);
+    if(/(^|\.)wsrv\.nl$/i.test(u.hostname)){
+      const enc=u.searchParams.get('url');
+      if(enc){
+        const dec=decodeURIComponent(enc);
+        if(dec)return dec.trim();
+      }
+    }
+  }catch(_){}
+  return src.trim();
+}
+
 /* ══ SUBTLE SOUNDS (Web Audio, без файлов) ══ */
 let _actx=null;
 function audioCtx(){if(!_actx)_actx=new(window.AudioContext||window.webkitAudioContext)();return _actx}
@@ -1450,7 +1469,7 @@ async function sendPhoto(file){
   if(!url){
     if(row)row.remove();
     updateMsgVerticalLayout();
-    alertD('Не удалось загрузить','Проверьте соединение. Если браузер блокирует загрузку на Litterbox.','ОК',()=>{});
+    alertD('Не удалось загрузить фото','Проверьте интернет и размер файла. Если не открывается хостинг Litterbox, в коде можно задать IMGBB_KEY (api.imgbb.com).','ОК',()=>{});
     return;
   }
 
@@ -1492,18 +1511,34 @@ async function sendMsg(){
 
 let flushing=false;
 async function flushQ(){
-  if(flushing||!S.queue.length)return;flushing=true;
-  while(S.queue.length){
-    const item=S.queue[0];
-    if(await trySend(item)){setPendSt(item.pid,'sent');S.queue.shift()}
-    else{item.attempts++;if(item.attempts>=MAX_RETRY_SEND){setPendSt(item.pid,'failed');S.queue.shift()}else await sleep(600*Math.min(item.attempts,4))}
+  if(flushing||!S.queue.length)return;
+  flushing=true;
+  try{
+    while(S.queue.length){
+      const item=S.queue.shift();
+      if(await trySend(item)){
+        setPendSt(item.pid,'sent');
+        continue;
+      }
+      item.attempts++;
+      if(item.attempts>=MAX_RETRY_SEND){
+        setPendSt(item.pid,'failed');
+      }else{
+        S.queue.push(item);
+        const hasOther=S.queue.some(o=>o.pid!==item.pid);
+        const delay=hasOther?120:Math.min(4000,500*Math.min(item.attempts,8));
+        await sleep(delay);
+      }
+    }
+  }finally{
+    flushing=false;
   }
-  flushing=false;
 }
 
 async function trySend(item){
   try{
-    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),6000);
+    const timeoutMs=item.photo?16000:12000;
+    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),timeoutMs);
     let res;try{
       const avj=getEffectiveAvatar(S.nick);
       const qpack=item.quote&&item.quote.n?{q:{n:item.quote.n,t:truncateQ(item.quote.t)}}:{};
@@ -1512,8 +1547,8 @@ async function trySend(item){
         :JSON.stringify({n:S.nick,t:item.text,av:avj,...qpack});
       res=await fetch(`${NTFY}/${S.topic}`,{method:'POST',body,signal:ctrl.signal});
     }finally{clearTimeout(tid)}
-    if(res.ok)soundSent();
-    return res.ok;
+    if(res&&res.ok)soundSent();
+    return!!(res&&res.ok);
   }catch(_){return false}
 }
 
@@ -1530,7 +1565,7 @@ function retryP(pid){
   const bubEl=el.querySelector('.photobub');
   let text='',photo;
   if(imgEl){
-    photo=(bubEl&&bubEl.dataset.fullPhoto)||imgEl.getAttribute('src')||'';
+    photo=fullPhotoUrlFromBubble(bubEl,imgEl);
     const cap=el.querySelector('.photocap');
     text=(cap&&cap.textContent.trim())||'';
   }else{
@@ -1540,7 +1575,9 @@ function retryP(pid){
   el.classList.remove('failed');el.classList.add('pending');
   const st=el.querySelector('.mstatus');if(st){st.className='mstatus sending';st.textContent='отправка…'}
   const rb=el.querySelector('.retry-btn');if(rb)rb.remove();
-  S.queue.push({pid,text,attempts:0,quote,...(photo?{photo}:{})});flushQ();
+  S.queue=S.queue.filter(it=>it.pid!==pid);
+  S.queue.push({pid,text,attempts:0,quote,...(photo?{photo}:{})});
+  flushQ();
 }
 
 /* ══ AVATAR PICKER ══ */
