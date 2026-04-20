@@ -67,11 +67,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .island-name{font-size:13px;font-weight:600;line-height:1.2}
 .island-status{font-size:11px;color:var(--green);display:flex;align-items:center;gap:4px;line-height:1.2}
 .island-status .idot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:idot 2s infinite}
+.island-tools{display:flex;align-items:center;gap:6px;margin-left:2px}
+.island-tool-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:rgba(255,255,255,.04);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s}
+.island-tool-btn:hover{background:rgba(255,255,255,.1);color:var(--accent2)}
 @keyframes idot{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* online panel */
 .opanel{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);background:rgba(18,18,28,.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:14px;min-width:230px;max-width:300px;z-index:200;display:none;box-shadow:0 12px 40px rgba(0,0,0,.6);animation:opIn .2s ease}
 .opanel.show{display:block}
+.srv-pop{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);background:rgba(18,18,28,.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:12px;min-width:260px;max-width:340px;z-index:220;display:none;box-shadow:0 12px 40px rgba(0,0,0,.6);animation:opIn .2s ease}
+.srv-pop.show{display:block}
 @keyframes opIn{from{opacity:0;transform:translateX(-50%) translateY(-8px) scale(.95)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
 .op-head{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--text3);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--border)}
 .op-user{display:flex;align-items:center;gap:9px;padding:4px 0}
@@ -251,6 +256,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .srv-auto-badge{font-size:10px;color:var(--accent2);background:var(--adim);border:1px solid rgba(124,106,247,.3);border-radius:20px;padding:1px 7px;flex-shrink:0}
 #srvSelectedInfo{font-size:12px;color:var(--text3);margin-top:3px;min-height:16px}
 #srvSelectedInfo b{color:var(--text2)}
+.srv-tools{display:flex;justify-content:flex-end;margin-top:6px}
+.srv-ping-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:var(--rxs);font-size:11px;padding:5px 9px;cursor:pointer;transition:background .15s,color .15s}
+.srv-ping-btn:hover{background:var(--bg4);color:var(--accent2)}
+#islandSrvSelectedInfo{font-size:12px;color:var(--text3);margin-bottom:5px;min-height:16px}
+#islandSrvSelectedInfo b{color:var(--text2)}
 </style>
 </head>
 <body>
@@ -282,11 +292,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="island-name" id="islandName">—</div>
       <div class="island-status"><span class="idot"></span><span id="islandCount">0 в сети</span></div>
     </div>
+    <div class="island-tools">
+      <button type="button" id="islandSrvBtn" class="island-tool-btn" title="Серверы">🌐</button>
+    </div>
     <div class="opanel" id="opanel">
       <div class="op-head">🟢 сейчас в норе</div>
       <div id="opOnline"></div>
       <div class="op-sect" id="opSeenSect" style="display:none">👁 были недавно</div>
       <div id="opSeen"></div>
+    </div>
+    <div class="srv-pop" id="islandSrvPanel">
+      <div id="islandSrvSelectedInfo">—</div>
+      <div class="srv-tools"><button type="button" class="srv-ping-btn" id="islandPingNowBtn">Пинг сейчас</button></div>
+      <div class="srv-list" id="islandSrvList"></div>
     </div>
   </div>
 </div>
@@ -326,6 +344,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span class="srv-hdr-arrow">›</span>
       </div>
       <div id="srvSelectedInfo">выбирается автоматически…</div>
+      <div class="srv-tools"><button type="button" class="srv-ping-btn" id="loginPingNowBtn">Пинг сейчас</button></div>
       <div class="srv-body" id="srvBody">
         <div class="srv-list" id="srvList"></div>
       </div>
@@ -406,6 +425,8 @@ const NTFY_SERVERS=[
 ];
 let NTFY='https://ntfy.sh'; // будет выбран автоматически или вручную
 const MAX_RETRY_LOGIN=10, MAX_RETRY_SEND=20, POLL_MS=2500;
+const PING_REFRESH_MS=30000;
+const SAFETY_PULL_MS=12000;
 const PRESENCE_TTL=30000; // online if heartbeat within 15s
 const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории ntfy запрашивать (шире TTL — чтобы не терять события на границе)
 
@@ -473,7 +494,7 @@ function resolveMsgAvatar(nick,avRaw){
 }
 
 /* ══ STATE ══ */
-let S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
+let S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,safetyTimer:null,known:new Set(),knownFallback:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
 
 /* ══ STORAGE ══ */
 const lsGet=k=>{try{return JSON.parse(localStorage.getItem(k)||'[]')}catch{return[]}};
@@ -735,6 +756,7 @@ async function doLogin(){
       syncFullscreenBtn();updateFsBtnIcon();
       scrollBot();setStatus('on','в эфире');
       startPoll();
+      startSafetyPull();
       S.ptimer=setInterval(async()=>{await sendPresence();await pollPresence();updateIsland()},6000);
       return;
     }catch(e){lastErr=e.message||String(e);if(a<MAX_RETRY_LOGIN)await sleep(800*a)}
@@ -746,9 +768,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* ══ SERVER PICKER ══ */
 let _srvManual=null; // null = авто, иначе url выбранного вручную
 const _pingCache=new Map();
+let _pingRefreshTimer=null;
 
 async function pingServer(url){
-  if(_pingCache.has(url))return _pingCache.get(url);
   const t=Date.now();
   try{
     const ctrl=new AbortController();
@@ -776,50 +798,72 @@ function pingLabel(ms){
 }
 
 function renderSrvList(){
-  const list=$('srvList');if(!list)return;
+  renderSrvListInto('srvList','login');
+  renderSrvListInto('islandSrvList','island');
+}
+
+function renderSrvListInto(listId,suffix){
+  const list=$(listId);if(!list)return;
   list.innerHTML='';
   NTFY_SERVERS.forEach(srv=>{
     const row=mk('div','srv-row');
     if(NTFY===srv.url)row.classList.add('selected');
     const flag=mk('span','srv-flag');flag.textContent=srv.flag;
     const lbl=mk('span','srv-label');lbl.textContent=srv.label;
-    const ping=mk('span','srv-ping measuring');ping.textContent='…';ping.id='ping-'+srv.url.replace(/[^a-z0-9]/gi,'_');
+    const ping=mk('span','srv-ping');
+    const cached=_pingCache.get(srv.url);
+    if(cached==null){ping.textContent='…';ping.className='srv-ping measuring'}
+    else{ping.textContent=pingLabel(cached);ping.className='srv-ping '+pingClass(cached)}
+    ping.id=`ping-${suffix}-`+srv.url.replace(/[^a-z0-9]/gi,'_');
     const chk=mk('span','srv-check');chk.textContent='✓';
-    // auto badge
     if(_srvManual===null&&NTFY===srv.url){
-      const b=mk('span','srv-auto-badge');b.textContent='авто';row.appendChild(flag);row.appendChild(lbl);row.appendChild(b);row.appendChild(ping);row.appendChild(chk);
+      const b=mk('span','srv-auto-badge');b.textContent='авто';
+      row.append(flag,lbl,b,ping,chk);
     }else{
-      row.appendChild(flag);row.appendChild(lbl);row.appendChild(ping);row.appendChild(chk);
+      row.append(flag,lbl,ping,chk);
     }
-    row.addEventListener('click',()=>{
+    row.addEventListener('click',async()=>{
       _srvManual=srv.url;
       NTFY=srv.url;
       updateSrvSelectedInfo();
       renderSrvList();
+      if(S.topic){
+        await pollPresence();
+        await forceRefresh();
+      }
     });
     list.appendChild(row);
   });
 }
 
 function updateSrvSelectedInfo(){
-  const el=$('srvSelectedInfo');if(!el)return;
   const srv=NTFY_SERVERS.find(s=>s.url===NTFY);
-  if(!srv){el.textContent='';return}
+  if(!srv){
+    $('srvSelectedInfo').textContent='';
+    $('islandSrvSelectedInfo').textContent='';
+    return;
+  }
   const ms=_pingCache.get(NTFY);
   const manual=_srvManual!==null;
-  el.innerHTML=(manual?'🔧 Вручную: ':'⚡ Авто: ')+'<b>'+srv.flag+' '+srv.label+'</b>'+(ms!=null?' · '+ms+'мс':'');
+  const text=(manual?'🔧 Вручную: ':'⚡ Авто: ')+'<b>'+srv.flag+' '+srv.label+'</b>'+(ms!=null?' · '+ms+'мс':'');
+  $('srvSelectedInfo').innerHTML=text;
+  $('islandSrvSelectedInfo').innerHTML=text;
 }
 
 async function measurePingsAndUpdate(){
-  // Запускаем все пинги параллельно, обновляем UI по мере прихода результатов
+  if(_pingRefreshTimer===null){
+    _pingRefreshTimer=setInterval(()=>{measurePingsAndUpdate()},PING_REFRESH_MS);
+  }
   const promises=NTFY_SERVERS.map(async srv=>{
-    const el=document.getElementById('ping-'+srv.url.replace(/[^a-z0-9]/gi,'_'));
     const ms=await pingServer(srv.url);
-    if(el){el.textContent=pingLabel(ms);el.className='srv-ping '+pingClass(ms)}
+    const key=srv.url.replace(/[^a-z0-9]/gi,'_');
+    const loginEl=document.getElementById('ping-login-'+key);
+    const islandEl=document.getElementById('ping-island-'+key);
+    if(loginEl){loginEl.textContent=pingLabel(ms);loginEl.className='srv-ping '+pingClass(ms)}
+    if(islandEl){islandEl.textContent=pingLabel(ms);islandEl.className='srv-ping '+pingClass(ms)}
     return{srv,ms};
   });
 
-  // После всех результатов — если пользователь не выбрал вручную, обновляем авто-выбор
   Promise.all(promises).then(results=>{
     if(_srvManual!==null)return;
     const best=results
@@ -835,29 +879,38 @@ async function measurePingsAndUpdate(){
 
 // Инициализация пикера
 function initServerPicker(){
-  // Раскрывашка
-  const hdr=$('srvHdr'),body=$('srvBody');
-  if(hdr&&body){
+  const bindToggle=(hdrId,bodyId)=>{
+    const hdr=$(hdrId),body=$(bodyId);
+    if(!hdr||!body)return;
     hdr.addEventListener('click',()=>{
       const open=body.classList.contains('open');
       body.classList.toggle('open',!open);
       hdr.classList.toggle('open',!open);
-      if(!open)renderSrvList(); // обновить выделение при открытии
+      if(!open)renderSrvList();
     });
-  }
+  };
+  bindToggle('srvHdr','srvBody');
   renderSrvList();
   updateSrvSelectedInfo();
-  // Запускаем пинги сразу
   measurePingsAndUpdate();
+  $('loginPingNowBtn').addEventListener('click',()=>measurePingsAndUpdate());
+  $('islandPingNowBtn').addEventListener('click',()=>measurePingsAndUpdate());
 }
 
 
 /** Один id в одном виде (строка), иначе history и poll считают разными ключами — дубли в DOM */
 function eventMsgId(ev){if(!ev||ev.id==null||ev.id==='')return'';return String(ev.id)}
+function eventFallbackKey(ev){
+  if(!ev)return'';
+  const t=ev.time||0;
+  const m=typeof ev.message==='string'?ev.message:'';
+  return `${t}|${m}`;
+}
 
 /* ══ HISTORY ══ */
 async function loadHistory(){
   S.known=new Set();
+  S.knownFallback=new Set();
   const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),8000);
   let res;try{res=await fetch(`${NTFY}/${S.topic}/json?poll=1&since=all`,{headers:{Accept:'application/x-ndjson'},signal:ctrl.signal})}finally{clearTimeout(tid)}
   if(!res.ok)throw new Error('HTTP '+res.status);
@@ -884,7 +937,10 @@ function isSingleEmoji(s){
 function appendMsg(ev,animate){
   const mid=eventMsgId(ev);
   if(mid&&S.known.has(mid))return;
+  const fallbackKey=eventFallbackKey(ev);
+  if(!mid&&fallbackKey&&S.knownFallback.has(fallbackKey))return;
   if(mid)S.known.add(mid);
+  else if(fallbackKey)S.knownFallback.add(fallbackKey);
   let nick='?',text='',photo='',av='',quote=null;
   try{
     const d=JSON.parse(ev.message||'{}');
@@ -977,6 +1033,30 @@ $('lightbox').addEventListener('click',e=>{if(e.target===$('lightbox')||e.target
 
 /* ══ POLLING ══ */
 function startPoll(){if(S.timer)clearInterval(S.timer);S.timer=setInterval(poll,POLL_MS)}
+function startSafetyPull(){
+  if(S.safetyTimer)clearInterval(S.safetyTimer);
+  S.safetyTimer=setInterval(async()=>{await safetyPull()},SAFETY_PULL_MS);
+}
+
+async function safetyPull(){
+  if(!S.topic)return;
+  try{
+    const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),5000);
+    const sinceFrom=Math.max(0,(S.since||Math.floor(Date.now()/1000))-90);
+    let res;try{res=await fetch(`${NTFY}/${S.topic}/json?poll=1&since=${sinceFrom}`,{headers:{Accept:'application/x-ndjson'},signal:ctrl.signal})}finally{clearTimeout(tid)}
+    if(!res.ok)return;
+    const txt=await res.text();let maxT=S.since;
+    for(const line of txt.trim().split('\n').filter(Boolean)){
+      try{
+        const ev=JSON.parse(line);
+        if(ev.event!=='message')continue;
+        appendMsg(ev,false);
+        if(ev.time>maxT)maxT=ev.time;
+      }catch(_){}
+    }
+    if(maxT>S.since)S.since=maxT;
+  }catch(_){}
+}
 
 async function forceRefresh(){
   if(!S.topic)return;
@@ -1121,8 +1201,19 @@ function pickAvatar(emoji){
 $('islandAv').addEventListener('click',e=>{
   e.stopPropagation();
   $('opanel').classList.remove('show');
+  $('islandSrvPanel').classList.remove('show');
   $('avatarPicker').classList.toggle('show');
   if($('avatarPicker').classList.contains('show'))renderAvatarGrid();
+});
+$('islandSrvBtn').addEventListener('click',e=>{
+  e.stopPropagation();
+  $('opanel').classList.remove('show');
+  $('avatarPicker').classList.remove('show');
+  $('islandSrvPanel').classList.toggle('show');
+  if($('islandSrvPanel').classList.contains('show')){
+    renderSrvList();
+    updateSrvSelectedInfo();
+  }
 });
 $('avatarReset').addEventListener('click',e=>{
   e.stopPropagation();
@@ -1134,13 +1225,18 @@ $('avatarReset').addEventListener('click',e=>{
 
 /* ══ EMOJI ══ */
 $('island').addEventListener('click',e=>{
-  if(e.target.closest('#islandAv'))return;
+  if(e.target.closest('#islandAv')||e.target.closest('#islandSrvBtn')||e.target.closest('#islandSrvPanel')||e.target.closest('#opanel'))return;
   e.stopPropagation();const p=$('opanel');
+  $('islandSrvPanel').classList.remove('show');
   if(p.classList.contains('show')){p.classList.remove('show')}
   else{renderOnlinePanel();p.classList.add('show')}
 });
 document.addEventListener('click',e=>{
-  if(!$('islandWrap').contains(e.target)){$('opanel').classList.remove('show');$('avatarPicker').classList.remove('show')}
+  if(!$('islandWrap').contains(e.target)){
+    $('opanel').classList.remove('show');
+    $('avatarPicker').classList.remove('show');
+    $('islandSrvPanel').classList.remove('show');
+  }
 });
 
 /* ══ REFRESH / FULLSCREEN ══ */
@@ -1166,9 +1262,9 @@ $('logoutBtn').addEventListener('click',()=>{
       if(ptopic&&nick){
         try{await fetch(`${NTFY}/${ptopic}`,{method:'POST',body:JSON.stringify({type:'presence',n:nick,leave:true,ts:Date.now()}),headers:{'X-Priority':'min','X-TTL':'120'}})}catch(_){}
       }
-      clearInterval(S.timer);clearInterval(S.ptimer);
+      clearInterval(S.timer);clearInterval(S.ptimer);clearInterval(S.safetyTimer);
       _presenceBootstrapped=false;_prevOnline=new Set();
-      S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,known:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
+      S={topic:'',nick:'',pass:'',ptopic:'',since:0,timer:null,ptimer:null,safetyTimer:null,known:new Set(),knownFallback:new Set(),queue:[],presence:new Map(),avatarCache:new Map()};
       $('chat').style.display='none';$('login').style.display='';$('island').closest('.island-wrap').style.display='none'
       $('loginBtn').disabled=false;$('uname').value='';$('rpass').value='';$('err').textContent='';
       renderChips();
