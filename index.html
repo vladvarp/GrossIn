@@ -220,6 +220,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 #emojiPicker .tab{background:transparent;border:none;color:var(--text2);padding:4px 8px;font-size:12px;border-radius:var(--rxs);cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
 #emojiPicker .tab:hover{background:var(--bg3)}
 #emojiPicker .tab.active{background:var(--adim);color:var(--accent2)}
+#emojiPicker .tab[data-cat="rec"]{display:none}
 #emojiPicker .em-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;max-height:180px;overflow-y:auto}
 #emojiPicker .em-grid::-webkit-scrollbar{width:4px}
 #emojiPicker .em-grid::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
@@ -427,14 +428,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
     <div id="emojiPicker">
       <div class="tabs">
-        <button class="tab" data-cat="rec" style="display:none">🕐</button>
-        <button class="tab active" data-cat="rat">🐹</button>
-        <button class="tab" data-cat="sml">😀</button>
-        <button class="tab" data-cat="anim">🐱</button>
-        <button class="tab" data-cat="food">🍕</button>
-        <button class="tab" data-cat="act">⚽</button>
-        <button class="tab" data-cat="obj">💼</button>
-        <button class="tab" data-cat="sym">❤️</button>
+        <button type="button" class="tab" data-cat="rec">🕐</button>
+        <button type="button" class="tab active" data-cat="rat">🐹</button>
+        <button type="button" class="tab" data-cat="sml">😀</button>
+        <button type="button" class="tab" data-cat="anim">🐱</button>
+        <button type="button" class="tab" data-cat="food">🍕</button>
+        <button type="button" class="tab" data-cat="act">⚽</button>
+        <button type="button" class="tab" data-cat="obj">💼</button>
+        <button type="button" class="tab" data-cat="sym">❤️</button>
       </div>
       <div class="em-grid" id="emGrid"></div>
     </div>
