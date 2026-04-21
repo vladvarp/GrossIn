@@ -499,6 +499,7 @@ const PRESENCE_POLL_SINCE_SEC=120; // сколько секунд истории
 const LITTERBOX_UPLOAD='https://litterbox.catbox.moe/resources/internals/api.php';
 const LITTERBOX_TIME='72h';
 const PHOTO_MAX_BYTES=12*1024*1024;
+const MAX_PHOTOS_PER_MESSAGE=4;
 /** Если загрузка с браузера на Litterbox не проходит (CORS/сеть), можно вписать ключ с https://api.imgbb.com */
 const IMGBB_KEY='3d7dc282b048d6ac33f2822064150f8c';
 const PHOTO_PRIVACY_LS='pc_photo_privacy_ok';
@@ -1498,17 +1499,19 @@ function renderStagePanel(){
     item.appendChild(del);
     panel.appendChild(item);
   }
-  // add more button
-  const addBtn=document.createElement('div');addBtn.className='photo-stage-add';addBtn.title='Добавить ещё фото';addBtn.textContent='+';
-  addBtn.onclick=()=>{
-    try{if(localStorage.getItem(PHOTO_PRIVACY_LS)==='1'){$('photoInput').click();return}}catch(_){}
-    confirmD('Фото не совсем приватное','Снимок сначала попадает на публичный файлообменник: у кого есть ссылка — тот может открыть картинку. Не отправляйте то, что нельзя показывать посторонним. Фотография хранятся на сервере 72 часа.','Понятно, выбрать фото',idx=>{
-      if(idx!==1)return;
-      try{localStorage.setItem(PHOTO_PRIVACY_LS,'1')}catch(_){}
-      $('photoInput').click();
-    });
-  };
-  panel.appendChild(addBtn);
+  // add more button - only show if under limit
+  if(_stagedPhotos.size<MAX_PHOTOS_PER_MESSAGE){
+    const addBtn=document.createElement('div');addBtn.className='photo-stage-add';addBtn.title='Добавить ещё фото';addBtn.textContent='+';
+    addBtn.onclick=()=>{
+      try{if(localStorage.getItem(PHOTO_PRIVACY_LS)==='1'){$('photoInput').click();return}}catch(_){}
+      confirmD('Фото не совсем приватное','Снимок сначала попадает на публичный файлообменник: у кого есть ссылка — тот может открыть картинку. Не отправляйте то, что нельзя показывать посторонним. Фотография хранятся на сервере 72 часа.','Понятно, выбрать фото',idx=>{
+        if(idx!==1)return;
+        try{localStorage.setItem(PHOTO_PRIVACY_LS,'1')}catch(_){}
+        $('photoInput').click();
+      });
+    };
+    panel.appendChild(addBtn);
+  }
   updateSendBtnState();
 }
 
@@ -1524,6 +1527,7 @@ function stagePhotoProgress(sid,p){
 function stagePhoto(file){
   if(!file||!file.type||!file.type.startsWith('image/')){alertD('Фото','Выберите файл изображения.','ОК',()=>{});return}
   if(file.size>PHOTO_MAX_BYTES){alertD('Фото','Файл слишком большой (максимум '+Math.round(PHOTO_MAX_BYTES/1024/1024)+' МБ).','ОК',()=>{});return}
+  if(_stagedPhotos.size>=MAX_PHOTOS_PER_MESSAGE){alertD('Лимит','Нельзя прикрепить более '+MAX_PHOTOS_PER_MESSAGE+' фотографий за раз.','ОК',()=>{});return}
   const sid='s'+(++_stageSeq);
   const objUrl=URL.createObjectURL(file);
   const ac=new AbortController();
@@ -1848,6 +1852,10 @@ $('photoBtn').addEventListener('click',openPhotoPicker);
 $('photoInput').addEventListener('change',e=>{
   const files=e.target.files?Array.from(e.target.files):[];
   e.target.value='';
+  if(files.length>MAX_PHOTOS_PER_MESSAGE){
+    alertD('Слишком много фото','Можно отправлять не более '+MAX_PHOTOS_PER_MESSAGE+' фотографий за раз.','ОК',()=>{});
+    return;
+  }
   files.forEach(f=>stagePhoto(f));
 });
 $('loginBtn').addEventListener('click',doLogin);
