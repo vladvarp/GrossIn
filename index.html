@@ -308,7 +308,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<div id="lightbox"><button id="lbclose">✕</button><img id="lbimg" src="" alt=""></div>
+<div id="lightbox"><button id="lbclose" type="button" aria-label="Закрыть">✕</button><img id="lbimg" src="" alt=""></div>
 
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -347,7 +347,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- LOGIN -->
 <div id="login">
   <div class="logo" style="position:relative">
-    <button type="button" id="howItWorksBtn" style="position:absolute;top:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">?</button>
+    <button type="button" id="howItWorksBtn" aria-label="Как работает" style="position:absolute;top:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center">?</button>
     <div id="howItWorksPop" style="display:none;position:absolute;top:28px;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rsm);padding:10px 12px;font-size:12px;line-height:1.5;color:var(--text2);width:min(280px,calc(100vw - 24px));z-index:10;box-shadow:0 4px 16px rgba(0,0,0,.35)"><b style="color:var(--accent2)">Как работает:</b> пароль хешируется в уникальный ID канала. Попасть в нору могут только те крысы, кто знает пароль и заходят на тот же сервер. Регистрации нет. История 12 ч.</div>
     <div class="logo-ring"><span style="font-size:26px">🐭</span></div>
     <h1>ChrisoChat</h1>
@@ -406,10 +406,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <svg class="fs-ico-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         <svg class="fs-ico-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
       </button>
-      <button class="hbtn" id="copyBtn" title="Скопировать пароль">
+      <button class="hbtn" id="copyBtn" type="button" title="Скопировать пароль" aria-label="Скопировать пароль">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       </button>
-      <button class="hbtn" id="logoutBtn" title="Выйти">
+      <button class="hbtn" id="logoutBtn" type="button" title="Выйти" aria-label="Выйти">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
     </div>
@@ -439,13 +439,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="em-grid" id="emGrid"></div>
     </div>
     <div class="irow">
-       <button class="iicobtn" id="emojiBtn" title="Эмодзи">🐹</button>
+       <button class="iicobtn" id="emojiBtn" type="button" title="Эмодзи" aria-label="Эмодзи">🐹</button>
       <button type="button" class="iicobtn" id="photoBtn" title="Отправить фото" aria-label="Отправить фото">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       </button>
       <input type="file" id="photoInput" accept="image/*" style="display:none" aria-hidden="true"/>
       <textarea id="minput" rows="1" placeholder="Написать сообщение…" maxlength="2000"></textarea>
-      <button id="sendBtn" disabled>
+      <button id="sendBtn" type="button" disabled aria-label="Отправить">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       </button>
     </div>
