@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ChrisoChat</title>
 <style>
 :root{
@@ -152,6 +152,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mbubble.sticker{background:transparent!important;border:none!important;font-size:58px;line-height:1.1;padding:2px 6px}
 .mbubble.photobub{background:transparent!important;border:none!important;padding:3px}
 .photobub img{max-width:220px;max-height:260px;width:auto;height:auto;object-fit:contain;border-radius:12px;display:block;cursor:pointer;border:1px solid var(--border)}
+.photogrid{display:grid;gap:3px;max-width:224px}
+.photogrid.pg1{grid-template-columns:1fr}
+.photogrid.pg2{grid-template-columns:1fr 1fr}
+.photogrid.pg3{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}
+.photogrid.pg4{grid-template-columns:1fr 1fr}
+.photogrid .pg-item{position:relative;overflow:hidden;border-radius:8px;border:1px solid var(--border);aspect-ratio:1/1;cursor:pointer}
+.photogrid .pg-item img{width:100%;height:100%;object-fit:cover;display:block}
+.photogrid.pg3 .pg-item:first-child{grid-column:1/-1;aspect-ratio:16/9}
 .mrow.pending .mbubble{opacity:.55}
 .mrow.failed .mbubble{border-color:rgba(240,107,107,.4);background:rgba(240,107,107,.08)}
 .mtime{font-size:10px;color:var(--text3);margin-top:3px;padding:0 8px 0 12px;display:flex;align-items:center;gap:4px}
@@ -175,6 +183,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .photo-up-label{font-size:11px;color:var(--text3)}
 .photo-up-cancel{align-self:flex-start;font-size:11px;color:var(--accent2);background:none;border:none;cursor:pointer;padding:2px 0;text-decoration:underline;font-family:inherit}
 .photo-up-cancel:hover{color:var(--accent)}
+/* PHOTO STAGING PANEL */
+.photo-stage{display:none;flex-direction:row;flex-wrap:wrap;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;align-items:flex-start}
+.photo-stage.show{display:flex}
+.photo-stage-item{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;flex-shrink:0;border:1px solid var(--border2)}
+.photo-stage-item img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-stage-item .psi-status{position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--bg4)}
+.photo-stage-item .psi-bar{height:100%;width:0%;background:var(--accent);transition:width .15s ease-out}
+.photo-stage-item .psi-bar.indet{width:100%!important;animation:photoUpPulse .85s ease-in-out infinite}
+.photo-stage-item .psi-bar.done{background:var(--green);width:100%!important}
+.photo-stage-item .psi-bar.fail{background:var(--red);width:100%!important}
+.photo-stage-item .psi-del{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;padding:0}
+.photo-stage-item .psi-del:hover{background:var(--red)}
+.photo-stage-add{width:64px;height:64px;border-radius:8px;border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);font-size:22px;flex-shrink:0;transition:border-color .15s,color .15s;background:transparent}
+.photo-stage-add:hover{border-color:var(--accent2);color:var(--accent2)}
 .reply-bar{display:none;align-items:flex-start;gap:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rsm);padding:8px 10px;margin-bottom:8px;font-size:12px;line-height:1.45}
 .reply-bar.show{display:flex}
 .reply-bar-inner{flex:1;min-width:0;border-left:3px solid var(--accent);padding-left:10px}
@@ -419,6 +441,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="msgs"></div>
 
   <div class="ftr">
+    <div id="photoStage" class="photo-stage"></div>
     <div id="replyBar" class="reply-bar">
       <div class="reply-bar-inner">
         <div class="reply-bar-title" id="replyBarTitle"></div>
@@ -444,7 +467,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button type="button" class="iicobtn" id="photoBtn" title="Отправить фото" aria-label="Отправить фото">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
       </button>
-      <input type="file" id="photoInput" accept="image/*" style="display:none" aria-hidden="true"/>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" aria-hidden="true"/>
       <textarea id="minput" rows="1" placeholder="Написать сообщение…" maxlength="2000"></textarea>
       <button id="sendBtn" type="button" disabled aria-label="Отправить">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -1119,11 +1142,18 @@ function appendMsg(ev,animate){
   if(!mid&&fallbackKey&&S.knownFallback.has(fallbackKey))return;
   if(mid)S.known.add(mid);
   else if(fallbackKey)S.knownFallback.add(fallbackKey);
-  let nick='?',text='',photo='',av='',quote=null;
+  let nick='?',text='',photo='',photos=[],av='',quote=null;
   try{
     const d=JSON.parse(ev.message||'{}');
-    nick=d.n||'?';photo=String(d.photo||'').trim();av=d.av||'';
-    text=photo?(d.t!=null?String(d.t):''):(d.t||ev.message);
+    nick=d.n||'?';av=d.av||'';
+    if(Array.isArray(d.photos)&&d.photos.length){
+      photos=d.photos.map(u=>String(u).trim()).filter(Boolean);
+      photo=photos[0]||'';
+    }else{
+      photo=String(d.photo||'').trim();
+      if(photo)photos=[photo];
+    }
+    text=(photos.length>0)?(d.t!=null?String(d.t):''):(d.t||ev.message);
     if(d.q&&d.q.n!=null)quote={n:String(d.q.n),t:String(d.q.t||'')};
   }catch(_){text=ev.message||''}
 
@@ -1140,10 +1170,11 @@ function appendMsg(ev,animate){
     }
   }
 
-  // Resolve pending (текст сравниваем по data-send-text — в пузыре может быть цитата)
+  // Resolve pending
   let pendRow=null;
-  if(photo){
-    const el=document.querySelector('.pending [data-ppid="'+CSS.escape(photo.slice(-20))+'"]');
+  if(photos.length){
+    const firstPpid=photos[0].slice(-20);
+    const el=document.querySelector('.pending [data-ppid="'+CSS.escape(firstPpid)+'"]');
     if(el)pendRow=el.closest('.mrow');
   }else{
     for(const row of document.querySelectorAll('.mrow.pending')){if(row.dataset.sendText===text){pendRow=row;break}}
@@ -1155,10 +1186,13 @@ function appendMsg(ev,animate){
     return;
   }
   if(animate&&nick!=='?'&&nick!==S.nick)soundIn();
-  buildMsg({nick,text,photo,ts:(ev.time||0)*1000,state:'ok',animate,id:mid||ev.id,av,quote});
+  buildMsg({nick,text,photo,photos,ts:(ev.time||0)*1000,state:'ok',animate,id:mid||ev.id,av,quote});
 }
 
-function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote,localPreview}){
+function buildMsg({nick,text,photo,photos,ts,state,animate,id,pending,av,quote,localPreviews}){
+  // Normalise: always work with photos[]
+  if(!photos||!photos.length){photos=photo?[photo]:[]}
+  const hasPhoto=photos.length>0||!!(localPreviews&&localPreviews.length);
   hideEmptyDenMessage();
   const own=nick===S.nick,color=strColor(nick),animal=resolveMsgAvatar(nick,av);
   const pendLike=state==='pending'||state==='uploading';
@@ -1166,11 +1200,11 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote,localPre
   if(!animate)row.style.animation='none';
   if(id)row.dataset.msgId=id;
   if(pending)row.dataset.pendingId=pending;
-  if(pending&&text&&!photo&&!localPreview)row.dataset.sendText=text;
+  if(pending&&text&&!hasPhoto)row.dataset.sendText=text;
   if(pending&&quote)try{row.dataset.quoteJson=JSON.stringify(quote)}catch(_){}
 
   if(!own){
-    const av=mk('div','mav');av.style.background=color+'20';av.style.border='1.5px solid '+color+'55';av.textContent=animal;row.appendChild(av);
+    const avel=mk('div','mav');avel.style.background=color+'20';avel.style.border='1.5px solid '+color+'55';avel.textContent=animal;row.appendChild(avel);
   }
   const wrap=mk('div','mwrap');
   if(!own){const snd=mk('div','msender');snd.style.color=color;snd.textContent=nick;wrap.appendChild(snd)}
@@ -1190,33 +1224,46 @@ function buildMsg({nick,text,photo,ts,state,animate,id,pending,av,quote,localPre
     }
     mq.append(mn,mt);bub.appendChild(mq);
   }
-  if(photo||localPreview){
-    const up=state==='uploading'&&!!localPreview;
+  if(hasPhoto){
+    const up=state==='uploading'&&!!(localPreviews&&localPreviews.length);
     bub.classList.add('photobub');
-    const thumbSrc=up?localPreview:chatPhotoThumbUrl(photo);
-    const img=mk('img');img.src=thumbSrc;img.alt='фото';img.loading='lazy';img.decoding='async';
-    if(up){img.style.cursor='default';img.style.opacity='0.92'}
-    else{
-      img.onclick=()=>openLB(photo);
-      if(photo){
-        bub.dataset.fullPhoto=photo;
-        img.onerror=()=>{img.onerror=null;img.src=photo};
-      }
+    const displayUrls=up?localPreviews:photos;
+    const n=displayUrls.length;
+    if(n===1){
+      // Single photo — original style
+      const src=displayUrls[0];
+      const img=mk('img');img.src=up?src:chatPhotoThumbUrl(src);img.alt='фото';img.loading='lazy';img.decoding='async';
+      if(up){img.style.cursor='default';img.style.opacity='0.92';}
+      else{img.onclick=()=>openLB(photos[0]);bub.dataset.fullPhoto=photos[0];img.onerror=()=>{img.onerror=null;img.src=photos[0]}}
+      if(!up&&photos[0])bub.dataset.ppid=photos[0].slice(-20);
+      bub.appendChild(img);
+    }else{
+      // Multi-photo grid
+      const grid=mk('div','photogrid pg'+(Math.min(n,4)));
+      if(!up&&photos[0])grid.dataset.ppid=photos[0].slice(-20);
+      displayUrls.slice(0,4).forEach((src,i)=>{
+        const item=mk('div','pg-item');
+        const img=mk('img');img.src=up?src:chatPhotoThumbUrl(src);img.alt='фото';img.loading='lazy';img.decoding='async';
+        if(!up){
+          const idx=i;
+          img.onclick=()=>openLB(photos[idx]);
+          img.onerror=()=>{img.onerror=null;img.src=photos[idx]};
+        }else{
+          img.style.opacity='0.85';
+        }
+        item.appendChild(img);
+        grid.appendChild(item);
+      });
+      bub.appendChild(grid);
     }
-    if(photo&&!up){const ppid=photo.slice(-20);bub.dataset.ppid=ppid}
-    bub.appendChild(img);
     const capText=String(text||'').trim();
-    if(capText&&(!photo||capText!==String(photo).trim())){
-      const cap=mk('div','photocap');cap.textContent=text;bub.appendChild(cap);
-    }
+    if(capText){const cap=mk('div','photocap');cap.textContent=capText;bub.appendChild(cap);}
     if(up){
       const foot=mk('div','photo-up-foot');
       const barW=mk('div','photo-up-bar-wrap');
-      const bar=mk('div','photo-up-bar');
-      const lab=mk('div','photo-up-label');lab.textContent='Загрузка… 0%';
-      const cancel=mk('button','photo-up-cancel');cancel.type='button';cancel.textContent='Отмена';
-      barW.appendChild(bar);foot.append(barW,lab,cancel);bub.appendChild(foot);
-      cancel.addEventListener('click',e=>{e.stopPropagation();cleanupPhotoUpload(pending)});
+      const bar=mk('div','photo-up-bar photo-up-indet');
+      const lab=mk('div','photo-up-label');lab.textContent='Загрузка…';
+      barW.appendChild(bar);foot.append(barW,lab);bub.appendChild(foot);
     }
   }else{
     const body=mk('div','mbody');
@@ -1371,7 +1418,8 @@ function uploadLitterboxXHR(file,{onProgress,pid}){
     fd.append('time',LITTERBOX_TIME);
     fd.append('fileToUpload',file,file.name||'image.jpg');
     const xhr=new XMLHttpRequest();
-    const slot=activePhotoUploads.get(pid);
+    // Store xhr ref if a slot exists in either map
+    const slot=activePhotoUploads.get(pid)||_stagedPhotos.get(pid);
     if(slot)slot.xhr=xhr;
     xhr.open('POST',LITTERBOX_UPLOAD);
     xhr.upload.onprogress=e=>{
@@ -1424,106 +1472,180 @@ async function uploadImageImgBB(file,signal){
   return null;
 }
 
-async function sendPhoto(file){
-  if(_photoBusy||!S.topic)return;
-  if(!file||!file.type||!file.type.startsWith('image/')){
-    alertD('Фото','Выберите файл изображения.','ОК',()=>{});
-    return;
+/* ══ PHOTO STAGING ══ */
+const _stagedPhotos=new Map(); // sid -> {file, objUrl, uploadedUrl, state:'uploading'|'ready'|'fail', xhr, ac}
+let _stageSeq=0;
+
+function updateSendBtnState(){
+  const hasText=!!$('minput').value.trim();
+  const hasStaged=_stagedPhotos.size>0;
+  $('sendBtn').disabled=!(hasText||hasStaged);
+}
+
+function renderStagePanel(){
+  const panel=$('photoStage');
+  panel.innerHTML='';
+  if(_stagedPhotos.size===0){panel.classList.remove('show');updateSendBtnState();return}
+  panel.classList.add('show');
+  for(const[sid,s] of _stagedPhotos){
+    const item=document.createElement('div');item.className='photo-stage-item';item.dataset.sid=sid;
+    const img=document.createElement('img');img.src=s.objUrl;img.alt='';item.appendChild(img);
+    const statusBar=document.createElement('div');statusBar.className='psi-status';
+    const bar=document.createElement('div');bar.className='psi-bar'+(s.state==='uploading'?' indet':s.state==='ready'?' done':s.state==='fail'?' fail':'');
+    statusBar.appendChild(bar);item.appendChild(statusBar);
+    const del=document.createElement('button');del.className='psi-del';del.type='button';del.textContent='×';del.title='Убрать фото';
+    del.onclick=()=>removeStagedPhoto(sid);
+    item.appendChild(del);
+    panel.appendChild(item);
   }
-  if(file.size>PHOTO_MAX_BYTES){
-    alertD('Фото','Файл слишком большой (максимум '+Math.round(PHOTO_MAX_BYTES/1024/1024)+' МБ).','ОК',()=>{});
-    return;
-  }
-  const q=replyDraft;
-  setReplyDraft(null);
-  const inp=$('minput');
-  const caption=inp.value.trim();
-  inp.value='';
-  autoResize();
-  $('sendBtn').disabled=!inp.value.trim();
-
-  _photoBusy=true;
-  const pid='p'+(++pendSeq);
-  const objUrl=URL.createObjectURL(file);
-  const uploadAc=new AbortController();
-  activePhotoUploads.set(pid,{xhr:null,revokeUrl:objUrl,ac:uploadAc});
-
-  buildMsg({nick:S.nick,text:caption,state:'uploading',animate:true,pending:pid,localPreview:objUrl,av:getEffectiveAvatar(S.nick),quote:q});
-  scrollBot();
-  inp.focus();
-
-  const upd=p=>{
-    const r=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);if(!r)return;
-    const b=r.querySelector('.photo-up-bar'),l=r.querySelector('.photo-up-label');
-    if(p===null){
-      if(b){b.style.width='100%';b.classList.add('photo-up-indet')}
-      if(l)l.textContent='Загрузка…';
-    }else{
-      if(b){b.classList.remove('photo-up-indet');b.style.width=Math.max(0,Math.min(100,p))+'%'}
-      if(l)l.textContent='Загрузка… '+(p>=100?100:p)+'%';
-    }
+  // add more button
+  const addBtn=document.createElement('div');addBtn.className='photo-stage-add';addBtn.title='Добавить ещё фото';addBtn.textContent='+';
+  addBtn.onclick=()=>{
+    try{if(localStorage.getItem(PHOTO_PRIVACY_LS)==='1'){$('photoInput').click();return}}catch(_){}
+    confirmD('Фото не совсем приватное','Снимок сначала попадает на публичный файлообменник: у кого есть ссылка — тот может открыть картинку. Не отправляйте то, что нельзя показывать посторонним. Фотография хранятся на сервере 72 часа.','Понятно, выбрать фото',idx=>{
+      if(idx!==1)return;
+      try{localStorage.setItem(PHOTO_PRIVACY_LS,'1')}catch(_){}
+      $('photoInput').click();
+    });
   };
+  panel.appendChild(addBtn);
+  updateSendBtnState();
+}
 
-  let url=null;
-  try{
-    url=await uploadLitterboxXHR(file,{onProgress:upd,pid});
-  }catch(e){
-    if(e.name==='AbortError'){cleanupPhotoUpload(pid);return}
-    if(IMGBB_KEY){
-      const r=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);
-      const l=r&&r.querySelector('.photo-up-label');
-      const b=r&&r.querySelector('.photo-up-bar');
-      if(l)l.textContent='Загрузка… (другой хост)';
-      if(b){b.classList.add('photo-up-indet');b.style.width='100%'}
-      try{
-        url=await uploadImageImgBB(file,uploadAc.signal);
-      }catch(e2){
-        if(e2.name==='AbortError'){cleanupPhotoUpload(pid);return}
+function stagePhotoProgress(sid,p){
+  const s=_stagedPhotos.get(sid);if(!s)return;
+  const item=$('photoStage').querySelector(`[data-sid="${CSS.escape(sid)}"]`);
+  if(!item)return;
+  const bar=item.querySelector('.psi-bar');
+  if(p===null){bar.classList.add('indet')}
+  else{bar.classList.remove('indet');bar.style.width=Math.max(0,Math.min(100,p))+'%'}
+}
+
+function stagePhoto(file){
+  if(!file||!file.type||!file.type.startsWith('image/')){alertD('Фото','Выберите файл изображения.','ОК',()=>{});return}
+  if(file.size>PHOTO_MAX_BYTES){alertD('Фото','Файл слишком большой (максимум '+Math.round(PHOTO_MAX_BYTES/1024/1024)+' МБ).','ОК',()=>{});return}
+  const sid='s'+(++_stageSeq);
+  const objUrl=URL.createObjectURL(file);
+  const ac=new AbortController();
+  _stagedPhotos.set(sid,{file,objUrl,uploadedUrl:null,state:'uploading',xhr:null,ac});
+  renderStagePanel();
+
+  // Start upload immediately in background
+  (async()=>{
+    let url=null;
+    try{
+      url=await uploadLitterboxXHR(file,{
+        onProgress:p=>stagePhotoProgress(sid,p),
+        pid:sid
+      });
+    }catch(e){
+      if(e.name==='AbortError'){return}
+      if(IMGBB_KEY){
+        stagePhotoProgress(sid,null);
+        try{url=await uploadImageImgBB(file,ac.signal)}catch(e2){if(e2.name==='AbortError')return}
       }
     }
+    const s=_stagedPhotos.get(sid);if(!s)return;
+    if(url){s.uploadedUrl=url;s.state='ready';}
+    else{s.state='fail';}
+    renderStagePanel();
+  })();
+}
+
+function removeStagedPhoto(sid){
+  const s=_stagedPhotos.get(sid);
+  if(s){
+    try{s.ac.abort()}catch(_){}
+    try{URL.revokeObjectURL(s.objUrl)}catch(_){}
+    _stagedPhotos.delete(sid);
+  }
+  renderStagePanel();
+}
+
+async function flushStagedPhotos(){
+  if(_stagedPhotos.size===0)return;
+  const caption=$('minput').value.trim();
+  $('minput').value='';autoResize();
+  const q=replyDraft;setReplyDraft(null);
+
+  // Snapshot and clear panel immediately
+  const entries=[..._stagedPhotos.entries()];
+  _stagedPhotos.clear();
+  renderStagePanel();
+
+  // Build one pending message with local previews for all photos
+  const pid='p'+(++pendSeq);
+  const localPreviews=entries.map(([,s])=>s.objUrl);
+  buildMsg({nick:S.nick,text:caption,state:'uploading',animate:true,pending:pid,
+    localPreviews,photos:[],av:getEffectiveAvatar(S.nick),quote:q});
+  scrollBot();
+  $('minput').focus();
+
+  // Wait for all uploads to finish (they're already running in parallel)
+  for(const[,s] of entries){
+    if(s.state==='uploading'){
+      await new Promise(resolve=>{
+        const check=setInterval(()=>{if(s.state!=='uploading'){clearInterval(check);resolve()}},150);
+      });
+    }
+    if((s.state==='fail'||!s.uploadedUrl)&&IMGBB_KEY){
+      try{const u=await uploadImageImgBB(s.file,new AbortController().signal);if(u){s.uploadedUrl=u;s.state='ready'}}catch(_){}
+    }
   }
 
-  const h=activePhotoUploads.get(pid);
-  if(h)activePhotoUploads.delete(pid);
-  if(h&&h.revokeUrl)try{URL.revokeObjectURL(h.revokeUrl)}catch(_){}
-  _photoBusy=false;
+  const urls=entries.map(([,s])=>s.uploadedUrl).filter(Boolean);
+  entries.forEach(([,s])=>{try{URL.revokeObjectURL(s.objUrl)}catch(_){}});
 
   const row=document.querySelector(`[data-pending-id="${CSS.escape(pid)}"]`);
-  if(!url){
+  if(!urls.length){
     if(row)row.remove();
     updateMsgVerticalLayout();
-    alertD('Не удалось загрузить фото','Проверьте интернет и размер файла.','ОК',()=>{});
+    alertD('Не удалось загрузить фото','Проверьте интернет и размер файлов.','ОК',()=>{});
     return;
   }
 
-  if(!row)return;
-
-  delete row.dataset.sendText;
-  const bub=row.querySelector('.mbubble');
-  const img=row.querySelector('.photobub img');
-  if(img){
-    bub.dataset.fullPhoto=url;
-    img.src=chatPhotoThumbUrl(url);
-    img.loading='lazy';
-    img.decoding='async';
-    img.style.opacity='';
-    img.style.cursor='pointer';
-    img.onclick=()=>openLB(url);
-    img.onerror=()=>{img.onerror=null;img.src=url};
+  // Update the pending bubble: replace previews with real images
+  if(row){
+    const bub=row.querySelector('.mbubble');
+    const foot=row.querySelector('.photo-up-foot');if(foot)foot.remove();
+    // Rebuild photo grid with real urls
+    const oldGrid=bub.querySelector('.photogrid,.photobub>img');
+    const n=urls.length;
+    if(n===1){
+      const img=mk('img');img.src=chatPhotoThumbUrl(urls[0]);img.alt='фото';img.loading='lazy';img.decoding='async';
+      img.onclick=()=>openLB(urls[0]);img.onerror=()=>{img.onerror=null;img.src=urls[0]};
+      bub.dataset.fullPhoto=urls[0];bub.dataset.ppid=urls[0].slice(-20);
+      if(oldGrid)bub.replaceChild(img,oldGrid);else bub.prepend(img);
+    }else{
+      const grid=mk('div','photogrid pg'+(Math.min(n,4)));
+      grid.dataset.ppid=urls[0].slice(-20);
+      urls.slice(0,4).forEach((url,i)=>{
+        const item=mk('div','pg-item');
+        const img=mk('img');img.src=chatPhotoThumbUrl(url);img.alt='фото';img.loading='lazy';img.decoding='async';
+        img.onclick=()=>openLB(urls[i]);img.onerror=()=>{img.onerror=null;img.src=urls[i]};
+        item.appendChild(img);grid.appendChild(item);
+      });
+      if(oldGrid)bub.replaceChild(grid,oldGrid);else bub.prepend(grid);
+    }
+    const st=row.querySelector('.mstatus');
+    if(st){st.className='mstatus sending';st.textContent='отправка…';}
   }
-  const foot=row.querySelector('.photo-up-foot');
-  if(foot)foot.remove();
-  if(bub)bub.dataset.ppid=url.slice(-20);
 
-  const st=row.querySelector('.mstatus');
-  if(st){st.className='mstatus sending';st.textContent='отправка…';}
-
-  S.queue.push({pid,text:caption||'',photo:url,attempts:0,quote:q||undefined});
+  S.queue.push({pid,text:caption||'',photos:urls,attempts:0,quote:q||undefined});
   flushQ();
+  updateSendBtnState();
+}
+
+async function sendPhoto(file){
+  // Legacy single-photo path — now just stages it
+  stagePhoto(file);
 }
 
 async function sendMsg(){
-  const inp=$('minput'),text=inp.value.trim();if(!text)return;
+  const inp=$('minput'),text=inp.value.trim();
+  const hasPhotos=_stagedPhotos.size>0;
+  if(!text&&!hasPhotos)return;
+  if(hasPhotos){await flushStagedPhotos();return;}
   const q=replyDraft;setReplyDraft(null);
   inp.value='';autoResize();$('sendBtn').disabled=true;
   const pid='p'+(++pendSeq);
@@ -1560,15 +1682,22 @@ async function flushQ(){
 
 async function trySend(item){
   try{
-    const timeoutMs=item.photo?16000:12000;
+    const timeoutMs=(item.photo||item.photos)?16000:12000;
     const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),timeoutMs);
     let res;try{
       const avj=getEffectiveAvatar(S.nick);
       const qpack=item.quote&&item.quote.n?{q:{n:item.quote.n,t:truncateQ(item.quote.t)}}:{};
-      const body=item.photo
-        ?JSON.stringify({n:S.nick,t:item.text||'',photo:item.photo,av:avj,...qpack})
-        :JSON.stringify({n:S.nick,t:item.text,av:avj,...qpack});
-      res=await fetch(`${NTFY}/${S.topic}`,{method:'POST',body,signal:ctrl.signal});
+      let payload;
+      if(item.photos&&item.photos.length>1){
+        payload=JSON.stringify({n:S.nick,t:item.text||'',photos:item.photos,av:avj,...qpack});
+      }else if(item.photos&&item.photos.length===1){
+        payload=JSON.stringify({n:S.nick,t:item.text||'',photo:item.photos[0],av:avj,...qpack});
+      }else if(item.photo){
+        payload=JSON.stringify({n:S.nick,t:item.text||'',photo:item.photo,av:avj,...qpack});
+      }else{
+        payload=JSON.stringify({n:S.nick,t:item.text,av:avj,...qpack});
+      }
+      res=await fetch(`${NTFY}/${S.topic}`,{method:'POST',body:payload,signal:ctrl.signal});
     }finally{clearTimeout(tid)}
     if(res&&res.ok)soundSent();
     return!!(res&&res.ok);
@@ -1696,7 +1825,7 @@ $('logoutBtn').addEventListener('click',()=>{
 
 /* ══ INPUT ══ */
 function autoResize(){const t=$('minput');t.style.height='auto';t.style.height=Math.min(t.scrollHeight,120)+'px'}
-$('minput').addEventListener('input',()=>{autoResize();$('sendBtn').disabled=!$('minput').value.trim()});
+$('minput').addEventListener('input',()=>{autoResize();updateSendBtnState()});
 $('minput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!$('sendBtn').disabled)sendMsg()}});
 $('sendBtn').addEventListener('click',sendMsg);
 function openPhotoPicker(){
@@ -1717,9 +1846,9 @@ function openPhotoPicker(){
 }
 $('photoBtn').addEventListener('click',openPhotoPicker);
 $('photoInput').addEventListener('change',e=>{
-  const f=e.target.files&&e.target.files[0];
+  const files=e.target.files?Array.from(e.target.files):[];
   e.target.value='';
-  if(f)sendPhoto(f);
+  files.forEach(f=>stagePhoto(f));
 });
 $('loginBtn').addEventListener('click',doLogin);
 $('overlayCancelBtn').addEventListener('click',()=>{if(_overlayCancelHandler)_overlayCancelHandler()});
